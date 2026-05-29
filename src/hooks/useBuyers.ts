@@ -4,7 +4,16 @@ import { useAuth } from '@/context/AuthContext'
 import type { Buyer } from '@/types/app.types'
 import { toast } from '@/hooks/useToast'
 
-type BuyerInput = Omit<Buyer, 'id' | 'user_id' | 'created_at' | 'updated_at'>
+type BuyerInput = {
+  name: string
+  pib?: string | null
+  jmbg?: string | null
+  phone?: string | null
+  address?: string | null
+  city?: string | null
+  email?: string | null
+  is_active?: boolean
+}
 
 export function useBuyers() {
   const { user } = useAuth()

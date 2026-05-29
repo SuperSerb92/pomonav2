@@ -4,7 +4,13 @@ import { useAuth } from '@/context/AuthContext'
 import type { Employee } from '@/types/app.types'
 import { toast } from '@/hooks/useToast'
 
-type EmployeeInput = Pick<Employee, 'name' | 'surname' | 'middle_name' | 'phone_number' | 'recommendation'>
+type EmployeeInput = {
+  name: string
+  surname: string
+  middle_name?: string | null
+  phone_number?: string | null
+  recommendation?: string | null
+}
 
 export function useEmployees() {
   const { user } = useAuth()
