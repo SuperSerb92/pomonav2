@@ -21,7 +21,7 @@ export function useWorkEvaluations() {
         .order('eval_date', { ascending: false })
         .limit(200)
       if (error) throw error
-      return data as WorkEvaluation[]
+      return data as unknown as WorkEvaluation[]
     },
     enabled: !!user,
   })

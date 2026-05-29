@@ -21,7 +21,7 @@ export function useRepurchase() {
         .order('repurchase_date', { ascending: false })
         .limit(200)
       if (error) throw error
-      return data as Repurchase[]
+      return data as unknown as Repurchase[]
     },
     enabled: !!user,
   })

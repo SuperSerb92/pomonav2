@@ -71,7 +71,7 @@ export function usePlots() {
         .eq('is_active', true)
         .order('plot_name')
       if (error) throw error
-      return data as Plot[]
+      return data as unknown as Plot[]
     },
     enabled: !!user,
   })

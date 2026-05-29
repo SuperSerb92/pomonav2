@@ -21,7 +21,7 @@ export function useCultureTypes() {
         .eq('is_active', true)
         .order('culture_type_name')
       if (error) throw error
-      return data as CultureType[]
+      return data as unknown as CultureType[]
     },
     enabled: !!user,
   })
