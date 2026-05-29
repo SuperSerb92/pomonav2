@@ -32,7 +32,7 @@ export default function PlotsPage() {
   const [editing, setEditing] = useState<Plot | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) })
+  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) as never })
 
   const openAdd = () => { setEditing(null); reset({}); setDialogOpen(true) }
   const openEdit = (p: Plot) => {

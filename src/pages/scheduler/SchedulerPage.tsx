@@ -75,7 +75,7 @@ export default function SchedulerPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
   })
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) })
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) as never })
 
   const openAdd = (date?: string) => {
     const d = date ?? new Date().toISOString().slice(0, 16)

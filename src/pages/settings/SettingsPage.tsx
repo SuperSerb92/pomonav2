@@ -29,7 +29,7 @@ export default function SettingsPage() {
   const { user } = useAuth()
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting, isDirty } } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as never,
   })
 
   useEffect(() => {

@@ -24,7 +24,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as never,
   })
 
   const onSubmit = async (data: FormData) => {

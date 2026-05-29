@@ -35,7 +35,7 @@ export default function BuyersPage() {
   const [editing, setEditing] = useState<Buyer | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) })
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) as never })
 
   const openAdd = () => { setEditing(null); reset({}); setDialogOpen(true) }
   const openEdit = (b: Buyer) => { setEditing(b); reset(b); setDialogOpen(true) }

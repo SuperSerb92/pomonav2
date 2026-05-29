@@ -51,7 +51,7 @@ export default function RepurchasePage() {
   const [rateType, setRateType] = useState<'srednji' | 'prodajni'>('srednji')
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as never,
   })
 
   const watchedPriceRsd = watch('price_rsd')

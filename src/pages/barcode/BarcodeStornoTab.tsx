@@ -18,7 +18,7 @@ export function BarcodeStornoTab() {
         .eq('is_storno', true)
         .order('storno_at', { ascending: false })
       if (error) throw error
-      return data as Barcode[]
+      return data as unknown as Barcode[]
     },
     enabled: !!user,
   })

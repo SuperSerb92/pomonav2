@@ -32,7 +32,7 @@ export default function CultureTypesPage() {
   const [editing, setEditing] = useState<CultureType | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) })
+  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) as never })
 
   const openAdd = () => { setEditing(null); reset({}); setDialogOpen(true) }
   const openEdit = (ct: CultureType) => { setEditing(ct); reset({ culture_id: ct.culture_id, culture_type_name: ct.culture_type_name }); setDialogOpen(true) }

@@ -27,7 +27,7 @@ export default function CulturesPage() {
   const [editing, setEditing] = useState<Culture | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) })
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) as never })
 
   const openAdd = () => { setEditing(null); reset({}); setDialogOpen(true) }
   const openEdit = (c: Culture) => { setEditing(c); reset(c); setDialogOpen(true) }

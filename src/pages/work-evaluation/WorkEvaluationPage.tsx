@@ -52,7 +52,7 @@ export default function WorkEvaluationPage() {
   const [editing, setEditing] = useState<WorkEvaluation | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) })
+  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) as never })
 
   const openAdd = () => { setEditing(null); reset({ eval_date: new Date().toISOString().split('T')[0] }); setDialogOpen(true) }
   const openEdit = (e: WorkEvaluation) => { setEditing(e); reset(e as FormData); setDialogOpen(true) }

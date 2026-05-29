@@ -35,7 +35,7 @@ export default function EmployeesPage() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as never,
   })
 
   const openAdd = () => { setEditing(null); reset({}); setDialogOpen(true) }

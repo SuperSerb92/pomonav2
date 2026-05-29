@@ -17,7 +17,7 @@ type FormData = z.infer<typeof schema>
 
 export default function ForgotPasswordPage() {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as never,
   })
 
   const onSubmit = async (data: FormData) => {

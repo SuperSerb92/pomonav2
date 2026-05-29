@@ -26,7 +26,7 @@ export default function PlotListsPage() {
   const [editing, setEditing] = useState<PlotList | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) })
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) as never })
 
   const openAdd = () => { setEditing(null); reset({}); setDialogOpen(true) }
   const openEdit = (p: PlotList) => { setEditing(p); reset(p); setDialogOpen(true) }

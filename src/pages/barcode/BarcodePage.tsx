@@ -10,7 +10,6 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -109,7 +108,7 @@ export default function BarcodePage() {
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   })
 
-  const { register, handleSubmit, setValue, watch, reset } = useForm<FormData>({ resolver: zodResolver(schema) as never })
+  const { handleSubmit, setValue, watch, reset } = useForm<FormData>({ resolver: zodResolver(schema) as never })
 
   const onSubmit = async (data: FormData) => {
     await create.mutateAsync(data)
