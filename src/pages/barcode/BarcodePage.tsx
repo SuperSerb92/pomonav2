@@ -73,7 +73,7 @@ export default function BarcodePage() {
         .order('created_at', { ascending: false })
         .limit(200)
       if (error) throw error
-      return data as Barcode[]
+      return data as unknown as Barcode[]
     },
     enabled: !!user,
   })
@@ -109,7 +109,7 @@ export default function BarcodePage() {
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   })
 
-  const { register, handleSubmit, setValue, watch, reset } = useForm<FormData>({ resolver: zodResolver(schema) })
+  const { register, handleSubmit, setValue, watch, reset } = useForm<FormData>({ resolver: zodResolver(schema) as never })
 
   const onSubmit = async (data: FormData) => {
     await create.mutateAsync(data)

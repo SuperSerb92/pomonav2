@@ -222,6 +222,8 @@ export type Database = {
           print_count?: number
         }
         Update: {
+          bruto?: number | null
+          neto?: number | null
           print_count?: number
           is_storno?: boolean
           storno_at?: string | null

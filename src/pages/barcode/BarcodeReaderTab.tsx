@@ -39,7 +39,7 @@ export function BarcodeReaderTab() {
         .gte('created_at', fourDaysAgo)
         .order('created_at', { ascending: false })
       if (error) throw error
-      return data as Barcode[]
+      return data as unknown as Barcode[]
     },
     enabled: !!user,
   })
