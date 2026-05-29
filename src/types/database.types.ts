@@ -401,7 +401,31 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      work_summary_by_employee: {
+        Row: {
+          user_id: string
+          employee_id: string
+          employee_full_name: string
+          eval_date: string
+          total_neto: number | null
+          total_boxes: number | null
+          total_pay: number | null
+          avg_evaluation: number | null
+        }
+        Relationships: []
+      }
+      profit_loss_daily: {
+        Row: {
+          user_id: string
+          report_date: string
+          worker_count: number | null
+          total_boxes: number | null
+          total_expenses: number | null
+          total_revenue: number | null
+          profit: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never

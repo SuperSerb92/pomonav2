@@ -46,7 +46,7 @@ export default function ProfitLossPage() {
         .lte('report_date', to)
         .order('report_date')
       if (error) throw error
-      return data as ProfitRow[]
+      return data as unknown as ProfitRow[]
     },
     enabled: !!user,
   })

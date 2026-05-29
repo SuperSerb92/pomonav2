@@ -44,7 +44,7 @@ export default function WorkSummaryPage() {
         .lte('eval_date', to)
         .order('eval_date', { ascending: false })
       if (error) throw error
-      return data as SummaryRow[]
+      return data as unknown as SummaryRow[]
     },
     enabled: !!user,
   })
