@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useForm, type SubmitHandler } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { MoreHorizontal, Pencil, Trash2, ClipboardCheck, Star } from 'lucide-react'
@@ -20,20 +20,18 @@ import { useEmployees } from '@/hooks/useEmployees'
 import { formatDate, formatCurrency, formatWeight } from '@/lib/formatters'
 import type { WorkEvaluation } from '@/types/app.types'
 
-const nullable = <T extends z.ZodTypeAny>(s: T) => s.nullish().transform((v) => v ?? null)
-
 const schema = z.object({
   employee_id: z.string().min(1, 'Select an employee'),
   eval_date: z.string().min(1, 'Required'),
-  neto: nullable(z.coerce.number()),
-  no_of_boxes: nullable(z.coerce.number().int()),
-  evaluation: nullable(z.coerce.number().min(1).max(3)),
-  pay_per_day: nullable(z.coerce.number()),
-  expense_kg: nullable(z.coerce.number()),
-  total: nullable(z.coerce.number()),
-  fuel: nullable(z.coerce.number()),
-  bonus: nullable(z.coerce.number()),
-  notes: nullable(z.string()),
+  neto: z.coerce.number().optional().nullable(),
+  no_of_boxes: z.coerce.number().int().optional().nullable(),
+  evaluation: z.coerce.number().min(1).max(3).optional().nullable(),
+  pay_per_day: z.coerce.number().optional().nullable(),
+  expense_kg: z.coerce.number().optional().nullable(),
+  total: z.coerce.number().optional().nullable(),
+  fuel: z.coerce.number().optional().nullable(),
+  bonus: z.coerce.number().optional().nullable(),
+  notes: z.string().optional().nullable(),
 })
 type FormData = z.infer<typeof schema>
 
@@ -59,9 +57,23 @@ export default function WorkEvaluationPage() {
   const openAdd = () => { setEditing(null); reset({ eval_date: new Date().toISOString().split('T')[0] }); setDialogOpen(true) }
   const openEdit = (e: WorkEvaluation) => { setEditing(e); reset(e as FormData); setDialogOpen(true) }
 
-  const onSubmit: SubmitHandler<FormData> = async (data) => {
-    if (editing) await update.mutateAsync({ id: editing.id, ...data })
-    else await create.mutateAsync(data)
+  const onSubmit = async (data: FormData) => {
+    const n = <T,>(v: T | null | undefined): T | null => v ?? null
+    const input = {
+      employee_id: data.employee_id,
+      eval_date: data.eval_date,
+      neto: n(data.neto),
+      no_of_boxes: n(data.no_of_boxes),
+      evaluation: n(data.evaluation) as 1 | 2 | 3 | null,
+      pay_per_day: n(data.pay_per_day),
+      expense_kg: n(data.expense_kg),
+      total: n(data.total),
+      fuel: n(data.fuel),
+      bonus: n(data.bonus),
+      notes: n(data.notes),
+    }
+    if (editing) await update.mutateAsync({ id: editing.id, ...input })
+    else await create.mutateAsync(input)
     setDialogOpen(false)
   }
 
@@ -98,7 +110,7 @@ export default function WorkEvaluationPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader><DialogTitle>{editing ? 'Edit evaluation' : 'Add evaluation'}</DialogTitle></DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit as never)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Employee *</Label>
