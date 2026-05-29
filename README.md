@@ -146,6 +146,7 @@ PomonaV2/
 │       ├── create-checkout-session/
 │       ├── create-portal-session/
 │       └── get-exchange-rate/
+├── wrangler.toml            # Cloudflare Workers deployment config
 ├── .env.local               # Your secrets (not committed)
 ├── .env.example             # Template for required variables
 └── package.json
@@ -241,9 +242,9 @@ supabase functions deploy get-exchange-rate
 The NBS credentials are bundled as defaults. To override them with secrets:
 
 ```bash
-supabase secrets set NBS_USERNAME=muftakis1986
-supabase secrets set NBS_PASSWORD=Krilin26061986
-supabase secrets set NBS_LICENCE_ID=c1c02e86-c529-43ca-b6cd-6af9ee00ef96
+supabase secrets set NBS_USERNAME=<your-nbs-username>
+supabase secrets set NBS_PASSWORD=<your-nbs-password>
+supabase secrets set NBS_LICENCE_ID=<your-nbs-licence-id>
 ```
 
 **Stripe functions** (optional — only needed if using paid subscriptions):
@@ -340,10 +341,59 @@ npx supabase gen types typescript --project-id <your-project-ref> > src/types/da
 
 ---
 
+## Deploying to Cloudflare Workers
+
+This project is configured for deployment as a Cloudflare Worker with static assets via `wrangler.toml`. SPA routing (`not_found_handling = "single-page-application"`) is handled natively — no `_redirects` file needed.
+
+### 1. Connect your GitHub repo
+
+Go to [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → **Create** → **Pages** → connect your GitHub repository.
+
+Build settings:
+
+| Setting | Value |
+|---|---|
+| Build command | `npm run build` |
+| Deploy command | `npx wrangler deploy` |
+| Build output directory | `dist` |
+
+### 2. Set environment variables
+
+In your Pages project → **Settings** → **Environment Variables** → **Production**, add:
+
+```
+VITE_SUPABASE_URL
+VITE_SUPABASE_ANON_KEY
+VITE_STRIPE_PUBLISHABLE_KEY
+VITE_STRIPE_PRO_MONTHLY_PRICE_ID
+VITE_STRIPE_BUSINESS_MONTHLY_PRICE_ID
+VITE_OPENWEATHER_API_KEY
+VITE_SITE_URL   ← your Cloudflare domain, e.g. https://pomonav2.yourname.workers.dev
+```
+
+Then retrigger a deployment — `VITE_*` variables are baked into the bundle at build time.
+
+### 3. Update Supabase redirect URLs
+
+In Supabase → **Authentication** → **URL Configuration**:
+
+- **Site URL**: `https://yourdomain.com`
+- **Redirect URLs**: `https://yourdomain.com/auth/callback`
+
+### 4. Custom domain (optional)
+
+In Cloudflare → **Workers & Pages** → your project → **Settings** → **Domains & Routes** → **Add Custom Domain**.
+
+---
+
 ## Building for Production
 
 ```bash
 npm run build
 ```
 
-The output goes to `dist/`. Deploy to any static host (Vercel, Netlify, Cloudflare Pages). Set all `VITE_*` environment variables in your hosting provider's dashboard.
+The output goes to `dist/`. The project is pre-configured for Cloudflare Workers via `wrangler.toml`. To deploy manually:
+
+```bash
+npx wrangler deploy
+```
