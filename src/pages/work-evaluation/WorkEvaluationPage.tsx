@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, type SubmitHandler } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { MoreHorizontal, Pencil, Trash2, ClipboardCheck, Star } from 'lucide-react'
@@ -20,18 +20,20 @@ import { useEmployees } from '@/hooks/useEmployees'
 import { formatDate, formatCurrency, formatWeight } from '@/lib/formatters'
 import type { WorkEvaluation } from '@/types/app.types'
 
+const nullable = <T extends z.ZodTypeAny>(s: T) => s.nullish().transform((v) => v ?? null)
+
 const schema = z.object({
   employee_id: z.string().min(1, 'Select an employee'),
   eval_date: z.string().min(1, 'Required'),
-  neto: z.coerce.number().optional().nullable(),
-  no_of_boxes: z.coerce.number().int().optional().nullable(),
-  evaluation: z.coerce.number().min(1).max(3).optional().nullable(),
-  pay_per_day: z.coerce.number().optional().nullable(),
-  expense_kg: z.coerce.number().optional().nullable(),
-  total: z.coerce.number().optional().nullable(),
-  fuel: z.coerce.number().optional().nullable(),
-  bonus: z.coerce.number().optional().nullable(),
-  notes: z.string().optional().nullable(),
+  neto: nullable(z.coerce.number()),
+  no_of_boxes: nullable(z.coerce.number().int()),
+  evaluation: nullable(z.coerce.number().min(1).max(3)),
+  pay_per_day: nullable(z.coerce.number()),
+  expense_kg: nullable(z.coerce.number()),
+  total: nullable(z.coerce.number()),
+  fuel: nullable(z.coerce.number()),
+  bonus: nullable(z.coerce.number()),
+  notes: nullable(z.string()),
 })
 type FormData = z.infer<typeof schema>
 
@@ -57,7 +59,7 @@ export default function WorkEvaluationPage() {
   const openAdd = () => { setEditing(null); reset({ eval_date: new Date().toISOString().split('T')[0] }); setDialogOpen(true) }
   const openEdit = (e: WorkEvaluation) => { setEditing(e); reset(e as FormData); setDialogOpen(true) }
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit: SubmitHandler<FormData> = async (data) => {
     if (editing) await update.mutateAsync({ id: editing.id, ...data })
     else await create.mutateAsync(data)
     setDialogOpen(false)
