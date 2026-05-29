@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ChevronLeft, ChevronRight, CalendarDays, Plus, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -33,7 +33,7 @@ export default function SchedulerPage() {
   const queryClient = useQueryClient()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+
 
   const key = ['scheduler_events', user?.id]
   const year = currentDate.getFullYear()
