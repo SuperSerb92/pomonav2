@@ -4,7 +4,19 @@ import { useAuth } from '@/context/AuthContext'
 import type { Repurchase } from '@/types/app.types'
 import { toast } from '@/hooks/useToast'
 
-type RepurchaseInput = Omit<Repurchase, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'buyer' | 'culture'>
+type RepurchaseInput = {
+  buyer_id: string
+  culture_id: string
+  repurchase_date: string
+  neto: number
+  no_of_boxes?: number | null
+  price_rsd?: number | null
+  price_eur?: number | null
+  income_rsd?: number | null
+  income_eur?: number | null
+  eur_rate?: number | null
+  notes?: string | null
+}
 
 export function useRepurchase() {
   const { user } = useAuth()
