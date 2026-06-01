@@ -72,7 +72,11 @@ export function BarcodePrintModal({ barcode, profile, onClose, onCreateCopies }:
     if (!barcode || isPrinting) return
     setIsPrinting(true)
     try {
-      const barcodeValues = await onCreateCopies(copies)
+      // copies = 1 → reprint the existing barcode, no new record created
+      // copies > 1 → create N new unique barcodes (one per crate)
+      const barcodeValues = copies === 1
+        ? [barcode.barcode_value]
+        : await onCreateCopies(copies)
 
       const makePageHtml = (value: string, isLast: boolean) => `
         <div style="width:3.25in;height:2.20in;box-sizing:border-box;display:flex;flex-direction:column;border:1.5px solid #222;background:#fff;overflow:hidden;${!isLast ? 'page-break-after:always' : ''}">
@@ -127,7 +131,7 @@ export function BarcodePrintModal({ barcode, profile, onClose, onCreateCopies }:
       const url = URL.createObjectURL(blob)
       const iframe = document.createElement('iframe')
       iframe.setAttribute('aria-hidden', 'true')
-      iframe.style.cssText = 'position:fixed;left:-9999px;top:0;border:0;width:3.25in;height:2.20in'
+      iframe.style.cssText = 'position:fixed;left:-9999px;top:0;border:0;width:4.25in;height:2.00in'
       iframe.src = url
       document.body.appendChild(iframe)
       iframe.onload = () => {
@@ -170,7 +174,7 @@ export function BarcodePrintModal({ barcode, profile, onClose, onCreateCopies }:
 
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <Label htmlFor="copies" className="shrink-0">Number of crates</Label>
+            <Label htmlFor="copies" className="shrink-0">Number of copies</Label>
             <Input
               id="copies"
               type="number"
@@ -181,14 +185,14 @@ export function BarcodePrintModal({ barcode, profile, onClose, onCreateCopies }:
               className="w-20"
             />
             <span className="text-xs text-muted-foreground">
-              {copies === 1 ? '1 new barcode will be created and printed' : `${copies} new barcodes will be created and printed — each crate gets its own unique barcode`}
+              {copies === 1 ? 'Reprints this label' : `${copies} new barcodes will be created — each crate gets its own unique barcode`}
             </span>
           </div>
 
           {/* Screen preview — shows label layout; each printed copy gets a unique barcode */}
           <div className="border rounded-lg overflow-hidden bg-white">
             <p className="text-[10px] text-muted-foreground px-3 py-1.5 bg-muted/40 border-b">
-              Label preview · unique barcode per crate
+              {copies === 1 ? 'Label preview · reprinting existing barcode' : `Label preview · ${copies} labels, each with a unique barcode`}
             </p>
             <div className="p-4 flex justify-center">
               <LabelCard {...labelData} />
