@@ -54,7 +54,7 @@ export function BarcodePrintModal({ barcode, profile, onClose }: Props) {
         html, body { visibility: hidden; }
         #pomona-print-labels,
         #pomona-print-labels * { visibility: visible; }
-        #pomona-print-labels { position: fixed; top: 0; left: 0; width: 5.07in; }
+        #pomona-print-labels { display: block !important; position: fixed; top: 0; left: 0; width: 5.07in; }
       }
     `
     document.head.appendChild(style)
@@ -115,7 +115,7 @@ export function BarcodePrintModal({ barcode, profile, onClose }: Props) {
           {/* Off-screen print area: N copies, each on its own page */}
           <div
             id="pomona-print-labels"
-            style={{ position: 'fixed', left: '-9999px', top: 0, width: '5.07in' }}
+            style={{ display: 'none' }}
             aria-hidden
           >
             {Array.from({ length: copies }, (_, i) => (
