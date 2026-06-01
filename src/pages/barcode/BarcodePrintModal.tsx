@@ -26,6 +26,26 @@ interface Props {
 export function BarcodePrintModal({ barcode, profile, onClose }: Props) {
   const [copies, setCopies] = useState(1)
 
+  // Inject print CSS on mount so Chrome processes @page rules before the print dialog opens.
+  // Dynamically injecting at window.print() time arrives too late for @page to take effect.
+  useEffect(() => {
+    const style = document.createElement('style')
+    style.id = 'pomona-print-style'
+    style.textContent = `
+      @page { margin: 0; }
+      @media print {
+        body > *:not(#pomona-print-labels) { display: none !important; }
+        #pomona-print-labels { display: block !important; }
+        #pomona-print-labels * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+      }
+    `
+    document.head.appendChild(style)
+    return () => document.getElementById('pomona-print-style')?.remove()
+  }, [])
+
   useEffect(() => {
     if (!barcode) return
     // Small delay ensures SVGs are mounted before JsBarcode runs
@@ -47,20 +67,7 @@ export function BarcodePrintModal({ barcode, profile, onClose }: Props) {
   }, [barcode, copies])
 
   function handlePrint() {
-    const style = document.createElement('style')
-    style.id = 'pomona-print-style'
-    style.textContent = `
-      @page { size: 5.07in 2in; margin: 0; }
-      @media print {
-        body > *:not(#pomona-print-labels) { display: none !important; }
-        #pomona-print-labels { display: block !important; }
-      }
-    `
-    document.head.appendChild(style)
     window.print()
-    window.addEventListener('afterprint', () => {
-      document.getElementById('pomona-print-style')?.remove()
-    }, { once: true })
   }
 
   if (!barcode) return null
