@@ -43,8 +43,8 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
-function generateBarcodeValue(userId: string) {
-  return `PM-${userId.slice(0, 4).toUpperCase()}-${Date.now()}`
+function generateBarcodeValue(userId: string, index = 0) {
+  return `PM-${userId.slice(0, 4).toUpperCase()}-${Date.now() + index}`
 }
 
 export default function BarcodePage() {
@@ -239,7 +239,28 @@ export default function BarcodePage() {
         </DialogContent>
       </Dialog>
 
-      <BarcodePrintModal barcode={printTarget} profile={profile} onClose={() => setPrintTarget(null)} />
+      <BarcodePrintModal
+    barcode={printTarget}
+    profile={profile}
+    onClose={() => setPrintTarget(null)}
+    onCreateCopies={async (copies) => {
+      const records = Array.from({ length: copies }, (_, i) => ({
+        user_id: user!.id,
+        employee_id: printTarget!.employee_id,
+        culture_id: printTarget!.culture_id,
+        culture_type_id: printTarget!.culture_type_id,
+        packaging_id: printTarget!.packaging_id,
+        plot_id: printTarget!.plot_id,
+        tara: printTarget!.tara,
+        barcode_value: generateBarcodeValue(user!.id, i),
+      }))
+      const { data, error } = await supabase.from('barcodes').insert(records).select('barcode_value')
+      if (error) throw error
+      queryClient.invalidateQueries({ queryKey: key })
+      queryClient.invalidateQueries({ queryKey: ['barcodes-reader', user?.id] })
+      return (data as { barcode_value: string }[]).map(r => r.barcode_value)
+    }}
+  />
 
       {/* Storno confirm dialog */}
       <Dialog open={!!stornoTarget} onOpenChange={() => setStornoTarget(null)}>
