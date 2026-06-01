@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
 import JsBarcode from 'jsbarcode'
 import { Printer } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -23,48 +22,15 @@ interface Props {
   onClose: () => void
 }
 
+function esc(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
 export function BarcodePrintModal({ barcode, profile, onClose }: Props) {
   const [copies, setCopies] = useState(1)
 
-  // Inject print CSS on mount so Chrome processes @page rules before the print dialog opens.
-  // Dynamically injecting at window.print() time arrives too late for @page to take effect.
-  useEffect(() => {
-    const style = document.createElement('style')
-    style.id = 'pomona-print-style'
-    // "size: landscape" uses the driver's configured USER paper dimensions in landscape
-    // orientation without overriding them — avoids the dimension mismatch that caused
-    // content to not fit when Chrome's @page size disagreed with the Godex G530 driver.
-    style.textContent = `
-      @page { size: landscape; margin: 0; }
-      @media print {
-        body > *:not(#pomona-print-labels) { display: none !important; }
-        #pomona-print-labels { display: block !important; }
-        #pomona-print-labels > div {
-          width: 100% !important;
-          height: 100vh !important;
-          box-sizing: border-box !important;
-          break-after: page;
-        }
-        #pomona-print-labels > div:last-child { break-after: avoid; }
-        #pomona-print-labels > div > div {
-          width: 100% !important;
-          height: 100% !important;
-          box-sizing: border-box !important;
-          border-radius: 0 !important;
-        }
-        #pomona-print-labels * {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-      }
-    `
-    document.head.appendChild(style)
-    return () => document.getElementById('pomona-print-style')?.remove()
-  }, [])
-
   useEffect(() => {
     if (!barcode) return
-    // Small delay ensures SVGs are mounted before JsBarcode runs
     const id = setTimeout(() => {
       document.querySelectorAll<SVGSVGElement>('.pomona-barcode-svg').forEach((el) => {
         JsBarcode(el, barcode.barcode_value, {
@@ -83,7 +49,89 @@ export function BarcodePrintModal({ barcode, profile, onClose }: Props) {
   }, [barcode, copies])
 
   function handlePrint() {
-    window.print()
+    if (!barcode) return
+
+    // Re-render the barcode into a fresh detached SVG so the iframe gets a clean copy.
+    const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement
+    JsBarcode(svgEl, barcode.barcode_value, {
+      format: 'CODE128',
+      width: 1.8,
+      height: 55,
+      displayValue: true,
+      fontSize: 10,
+      margin: 4,
+      background: '#ffffff',
+      lineColor: '#000000',
+    })
+    const barcodeHtml = `<svg xmlns="http://www.w3.org/2000/svg"
+      style="width:100%;display:block"
+      viewBox="${svgEl.getAttribute('viewBox') ?? `0 0 ${svgEl.getAttribute('width')} ${svgEl.getAttribute('height')}`}"
+    >${svgEl.innerHTML}</svg>`
+
+    const makePage = (isLast: boolean) => `
+      <div style="width:5.07in;height:2in;box-sizing:border-box;display:flex;flex-direction:column;border:1.5px solid #222;background:#fff;overflow:hidden;${!isLast ? 'page-break-after:always' : ''}">
+        <div style="background:#C4B5FD;color:#1C1B2A;padding:5px 10px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+          <span style="font-weight:700;font-size:10pt;letter-spacing:0.5px">${esc(farmName)}</span>
+          <span style="font-size:7.5pt;opacity:0.9">Origin: Serbia</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:6px 10px 4px;flex-shrink:0">
+          <div style="padding-right:8px">
+            <div style="font-size:6pt;text-transform:uppercase;letter-spacing:0.4px;color:#888;margin-bottom:1px">Variety</div>
+            <div style="font-size:8.5pt;font-weight:600;color:#111">${esc(variety)}</div>
+          </div>
+          <div style="padding-right:8px">
+            <div style="font-size:6pt;text-transform:uppercase;letter-spacing:0.4px;color:#888;margin-bottom:1px">Culture</div>
+            <div style="font-size:8.5pt;font-weight:600;color:#111">${esc(culture)}</div>
+          </div>
+          <div style="padding-right:8px">
+            <div style="font-size:6pt;text-transform:uppercase;letter-spacing:0.4px;color:#888;margin-bottom:1px">Lot code</div>
+            <div style="font-size:8.5pt;font-weight:600;color:#111">${esc(lotCode)}</div>
+          </div>
+          <div style="grid-column:1/-1;margin-top:4px">
+            <div style="font-size:6pt;text-transform:uppercase;letter-spacing:0.4px;color:#888;margin-bottom:1px">Worker</div>
+            <div style="font-size:8.5pt;font-weight:600;color:#111">${esc(employeeName)}</div>
+          </div>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:0 10px 4px">
+          ${barcodeHtml}
+        </div>
+      </div>`
+
+    const pages = Array.from({ length: copies }, (_, i) => makePage(i === copies - 1)).join('')
+
+    // Print from a hidden iframe with fully isolated CSS.
+    // This prevents any interference from the parent page's styles and ensures
+    // @page rules are applied cleanly in Chrome before the print dialog opens.
+    const iframe = document.createElement('iframe')
+    iframe.setAttribute('aria-hidden', 'true')
+    iframe.style.cssText = 'position:fixed;left:-9999px;top:0;border:0;width:5.07in;height:2in'
+    document.body.appendChild(iframe)
+
+    const doc = iframe.contentDocument!
+    doc.open()
+    doc.write(`<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  @page { size: 5.07in 2in landscape; margin: 0; }
+  html, body {
+    font-family: Arial, Helvetica, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+</style>
+</head>
+<body>${pages}</body>
+</html>`)
+    doc.close()
+
+    setTimeout(() => {
+      iframe.contentWindow?.print()
+      iframe.contentWindow?.addEventListener('afterprint', () => {
+        document.body.removeChild(iframe)
+      }, { once: true })
+    }, 150)
   }
 
   if (!barcode) return null
@@ -101,67 +149,49 @@ export function BarcodePrintModal({ barcode, profile, onClose }: Props) {
   const labelData: LabelData = { barcodeValue: barcode.barcode_value, lotCode, variety, culture, employeeName, farmName }
 
   return (
-    <>
-      <Dialog open={!!barcode} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[660px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Printer className="h-4 w-4" />
-              Print label
-            </DialogTitle>
-          </DialogHeader>
+    <Dialog open={!!barcode} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[660px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Printer className="h-4 w-4" />
+            Print label
+          </DialogTitle>
+        </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <Label htmlFor="copies" className="shrink-0">Number of copies</Label>
-              <Input
-                id="copies"
-                type="number"
-                min="1"
-                max="99"
-                value={copies}
-                onChange={(e) => setCopies(Math.max(1, Math.min(99, parseInt(e.target.value) || 1)))}
-                className="w-20"
-              />
-            </div>
-
-            {/* Screen preview */}
-            <div className="border rounded-lg overflow-hidden bg-white">
-              <p className="text-[10px] text-muted-foreground px-3 py-1.5 bg-muted/40 border-b">
-                Preview · {copies} {copies === 1 ? 'copy' : 'copies'} will print
-              </p>
-              <div className="p-4 flex justify-center">
-                <LabelCard {...labelData} />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={onClose}>Cancel</Button>
-              <Button className="bg-pomona-green hover:bg-pomona-green/90" onClick={handlePrint}>
-                <Printer className="h-4 w-4 mr-2" />
-                Print{copies > 1 ? ` ${copies} copies` : ''}
-              </Button>
-            </div>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Label htmlFor="copies" className="shrink-0">Number of copies</Label>
+            <Input
+              id="copies"
+              type="number"
+              min="1"
+              max="99"
+              value={copies}
+              onChange={(e) => setCopies(Math.max(1, Math.min(99, parseInt(e.target.value) || 1)))}
+              className="w-20"
+            />
           </div>
-        </DialogContent>
-      </Dialog>
 
-      {/* Print area rendered directly at document.body — outside the Dialog portal tree
-          so @media print rules can target it without Dialog wrappers interfering */}
-      {createPortal(
-        <div id="pomona-print-labels" style={{ display: 'none' }} aria-hidden>
-          {Array.from({ length: copies }, (_, i) => (
-            <div
-              key={i}
-              style={{ width: '5.07in', height: '2in', pageBreakAfter: i < copies - 1 ? 'always' : 'avoid' }}
-            >
+          {/* Screen preview */}
+          <div className="border rounded-lg overflow-hidden bg-white">
+            <p className="text-[10px] text-muted-foreground px-3 py-1.5 bg-muted/40 border-b">
+              Preview · {copies} {copies === 1 ? 'copy' : 'copies'} will print
+            </p>
+            <div className="p-4 flex justify-center">
               <LabelCard {...labelData} />
             </div>
-          ))}
-        </div>,
-        document.body
-      )}
-    </>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button className="bg-pomona-green hover:bg-pomona-green/90" onClick={handlePrint}>
+              <Printer className="h-4 w-4 mr-2" />
+              Print{copies > 1 ? ` ${copies} copies` : ''}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -179,7 +209,6 @@ function LabelCard({ lotCode, variety, culture, employeeName, farmName }: LabelD
       background: '#fff',
       overflow: 'hidden',
     }}>
-      {/* Header bar */}
       <div style={{
         background: '#C4B5FD',
         color: '#1C1B2A',
@@ -193,7 +222,6 @@ function LabelCard({ lotCode, variety, culture, employeeName, farmName }: LabelD
         <span style={{ fontSize: '7.5pt', opacity: 0.9 }}>Origin: Serbia</span>
       </div>
 
-      {/* Fields */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr 1fr',
@@ -217,7 +245,6 @@ function LabelCard({ lotCode, variety, culture, employeeName, farmName }: LabelD
         </div>
       </div>
 
-      {/* Barcode */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 10px 4px' }}>
         <svg className="pomona-barcode-svg" style={{ width: '100%', display: 'block' }} />
       </div>
