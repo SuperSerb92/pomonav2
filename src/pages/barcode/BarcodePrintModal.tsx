@@ -51,22 +51,14 @@ export function BarcodePrintModal({ barcode, profile, onClose }: Props) {
   function handlePrint() {
     if (!barcode) return
 
-    // Re-render the barcode into a fresh detached SVG so the iframe gets a clean copy.
-    const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement
-    JsBarcode(svgEl, barcode.barcode_value, {
-      format: 'CODE128',
-      width: 1.8,
-      height: 55,
-      displayValue: true,
-      fontSize: 10,
-      margin: 4,
-      background: '#ffffff',
-      lineColor: '#000000',
-    })
-    const barcodeHtml = `<svg xmlns="http://www.w3.org/2000/svg"
-      style="width:100%;display:block"
-      viewBox="${svgEl.getAttribute('viewBox') ?? `0 0 ${svgEl.getAttribute('width')} ${svgEl.getAttribute('height')}`}"
-    >${svgEl.innerHTML}</svg>`
+    // Use the already-rendered screen-preview SVG — JsBarcode has already run on it
+    // and it's guaranteed correct. Detached SVG elements don't render reliably.
+    const previewSVG = document.querySelector<SVGSVGElement>('.pomona-barcode-svg')
+    const svgW = previewSVG?.getAttribute('width') ?? '300'
+    const svgH = previewSVG?.getAttribute('height') ?? '74'
+    const barcodeHtml = previewSVG?.innerHTML
+      ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgW} ${svgH}" width="100%" style="display:block">${previewSVG.innerHTML}</svg>`
+      : ''
 
     const makePage = (isLast: boolean) => `
       <div style="width:5.07in;height:2in;box-sizing:border-box;display:flex;flex-direction:column;border:1.5px solid #222;background:#fff;overflow:hidden;${!isLast ? 'page-break-after:always' : ''}">
@@ -99,17 +91,7 @@ export function BarcodePrintModal({ barcode, profile, onClose }: Props) {
 
     const pages = Array.from({ length: copies }, (_, i) => makePage(i === copies - 1)).join('')
 
-    // Print from a hidden iframe with fully isolated CSS.
-    // This prevents any interference from the parent page's styles and ensures
-    // @page rules are applied cleanly in Chrome before the print dialog opens.
-    const iframe = document.createElement('iframe')
-    iframe.setAttribute('aria-hidden', 'true')
-    iframe.style.cssText = 'position:fixed;left:-9999px;top:0;border:0;width:5.07in;height:2in'
-    document.body.appendChild(iframe)
-
-    const doc = iframe.contentDocument!
-    doc.open()
-    doc.write(`<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html>
 <head>
 <style>
@@ -123,15 +105,26 @@ export function BarcodePrintModal({ barcode, profile, onClose }: Props) {
 </style>
 </head>
 <body>${pages}</body>
-</html>`)
-    doc.close()
+</html>`
 
-    setTimeout(() => {
+    // Load via blob URL so Chrome treats the iframe as a fully loaded document —
+    // more reliable than doc.write() for @page rule processing.
+    const blob = new Blob([html], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+
+    const iframe = document.createElement('iframe')
+    iframe.setAttribute('aria-hidden', 'true')
+    iframe.style.cssText = 'position:fixed;left:-9999px;top:0;border:0;width:5.07in;height:2in'
+    iframe.src = url
+    document.body.appendChild(iframe)
+
+    iframe.onload = () => {
       iframe.contentWindow?.print()
       iframe.contentWindow?.addEventListener('afterprint', () => {
         document.body.removeChild(iframe)
+        URL.revokeObjectURL(url)
       }, { once: true })
-    }, 150)
+    }
   }
 
   if (!barcode) return null
