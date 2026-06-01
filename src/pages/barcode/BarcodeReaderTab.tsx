@@ -275,7 +275,28 @@ export function BarcodeReaderTab() {
       )}
     </div>
 
-    <BarcodePrintModal barcode={printTarget} profile={profile} onClose={() => setPrintTarget(null)} />
+    <BarcodePrintModal
+      barcode={printTarget}
+      profile={profile}
+      onClose={() => setPrintTarget(null)}
+      onCreateCopies={async (copies) => {
+        const records = Array.from({ length: copies }, (_, i) => ({
+          user_id: user!.id,
+          employee_id: printTarget!.employee_id,
+          culture_id: printTarget!.culture_id,
+          culture_type_id: printTarget!.culture_type_id,
+          packaging_id: printTarget!.packaging_id,
+          plot_id: printTarget!.plot_id,
+          tara: printTarget!.tara,
+          barcode_value: `PM-${user!.id.slice(0, 4).toUpperCase()}-${Date.now() + i}`,
+        }))
+        const { data, error } = await supabase.from('barcodes').insert(records).select('barcode_value')
+        if (error) throw error
+        queryClient.invalidateQueries({ queryKey: ['barcodes', user?.id] })
+        queryClient.invalidateQueries({ queryKey: ['barcodes-reader', user?.id] })
+        return (data as { barcode_value: string }[]).map(r => r.barcode_value)
+      }}
+    />
     </>
   )
 }
