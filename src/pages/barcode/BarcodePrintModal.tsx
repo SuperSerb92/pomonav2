@@ -61,7 +61,7 @@ export function BarcodePrintModal({ barcode, profile, onClose }: Props) {
       : ''
 
     const makePage = (isLast: boolean) => `
-      <div style="width:5.07in;height:2in;box-sizing:border-box;display:flex;flex-direction:column;border:1.5px solid #222;background:#fff;overflow:hidden;${!isLast ? 'page-break-after:always' : ''}">
+      <div style="width:4.65in;height:2in;box-sizing:border-box;display:flex;flex-direction:column;border:1.5px solid #222;background:#fff;overflow:hidden;${!isLast ? 'page-break-after:always' : ''}">
         <div style="background:#C4B5FD;color:#1C1B2A;padding:5px 10px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
           <span style="font-weight:700;font-size:10pt;letter-spacing:0.5px">${esc(farmName)}</span>
           <span style="font-size:7.5pt;opacity:0.9">Origin: Serbia</span>
@@ -96,7 +96,7 @@ export function BarcodePrintModal({ barcode, profile, onClose }: Props) {
 <head>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  @page { size: 5.07in 2in landscape; margin: 0; }
+  @page { size: 4.65in 2in landscape; margin: 0; }
   html, body {
     font-family: Arial, Helvetica, sans-serif;
     -webkit-print-color-adjust: exact;
@@ -114,7 +114,7 @@ export function BarcodePrintModal({ barcode, profile, onClose }: Props) {
 
     const iframe = document.createElement('iframe')
     iframe.setAttribute('aria-hidden', 'true')
-    iframe.style.cssText = 'position:fixed;left:-9999px;top:0;border:0;width:5.07in;height:2in'
+    iframe.style.cssText = 'position:fixed;left:-9999px;top:0;border:0;width:4.65in;height:2in'
     iframe.src = url
     document.body.appendChild(iframe)
 
@@ -192,7 +192,7 @@ function LabelCard({ lotCode, variety, culture, employeeName, farmName }: LabelD
   return (
     <div style={{
       fontFamily: 'Arial, Helvetica, sans-serif',
-      width: '5.07in',
+      width: '4.65in',
       height: '2in',
       boxSizing: 'border-box',
       display: 'flex',
