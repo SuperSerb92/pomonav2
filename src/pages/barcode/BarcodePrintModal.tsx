@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import JsBarcode from 'jsbarcode'
 import { Printer } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -51,10 +52,8 @@ export function BarcodePrintModal({ barcode, profile, onClose }: Props) {
     style.textContent = `
       @page { size: 5.07in 2in; margin: 0; }
       @media print {
-        html, body { visibility: hidden; }
-        #pomona-print-labels,
-        #pomona-print-labels * { visibility: visible; }
-        #pomona-print-labels { display: block !important; position: fixed; top: 0; left: 0; width: 5.07in; }
+        body > *:not(#pomona-print-labels) { display: none !important; }
+        #pomona-print-labels { display: block !important; }
       }
     `
     document.head.appendChild(style)
@@ -79,65 +78,67 @@ export function BarcodePrintModal({ barcode, profile, onClose }: Props) {
   const labelData: LabelData = { barcodeValue: barcode.barcode_value, lotCode, variety, culture, employeeName, farmName }
 
   return (
-    <Dialog open={!!barcode} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[660px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Printer className="h-4 w-4" />
-            Print label
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={!!barcode} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-[660px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Printer className="h-4 w-4" />
+              Print label
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Label htmlFor="copies" className="shrink-0">Number of copies</Label>
-            <Input
-              id="copies"
-              type="number"
-              min="1"
-              max="99"
-              value={copies}
-              onChange={(e) => setCopies(Math.max(1, Math.min(99, parseInt(e.target.value) || 1)))}
-              className="w-20"
-            />
-          </div>
-
-          {/* Screen preview */}
-          <div className="border rounded-lg overflow-hidden bg-white">
-            <p className="text-[10px] text-muted-foreground px-3 py-1.5 bg-muted/40 border-b">
-              Preview · {copies} {copies === 1 ? 'copy' : 'copies'} will print
-            </p>
-            <div className="p-4 flex justify-center">
-              <LabelCard {...labelData} />
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Label htmlFor="copies" className="shrink-0">Number of copies</Label>
+              <Input
+                id="copies"
+                type="number"
+                min="1"
+                max="99"
+                value={copies}
+                onChange={(e) => setCopies(Math.max(1, Math.min(99, parseInt(e.target.value) || 1)))}
+                className="w-20"
+              />
             </div>
-          </div>
 
-          {/* Off-screen print area: N copies, each on its own page */}
-          <div
-            id="pomona-print-labels"
-            style={{ display: 'none' }}
-            aria-hidden
-          >
-            {Array.from({ length: copies }, (_, i) => (
-              <div
-                key={i}
-                style={{ width: '5.07in', height: '2in', pageBreakAfter: i < copies - 1 ? 'always' : 'avoid' }}
-              >
+            {/* Screen preview */}
+            <div className="border rounded-lg overflow-hidden bg-white">
+              <p className="text-[10px] text-muted-foreground px-3 py-1.5 bg-muted/40 border-b">
+                Preview · {copies} {copies === 1 ? 'copy' : 'copies'} will print
+              </p>
+              <div className="p-4 flex justify-center">
                 <LabelCard {...labelData} />
               </div>
-            ))}
-          </div>
+            </div>
 
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button className="bg-pomona-green hover:bg-pomona-green/90" onClick={handlePrint}>
-              <Printer className="h-4 w-4 mr-2" />
-              Print{copies > 1 ? ` ${copies} copies` : ''}
-            </Button>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={onClose}>Cancel</Button>
+              <Button className="bg-pomona-green hover:bg-pomona-green/90" onClick={handlePrint}>
+                <Printer className="h-4 w-4 mr-2" />
+                Print{copies > 1 ? ` ${copies} copies` : ''}
+              </Button>
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      {/* Print area rendered directly at document.body — outside the Dialog portal tree
+          so @media print rules can target it without Dialog wrappers interfering */}
+      {createPortal(
+        <div id="pomona-print-labels" style={{ display: 'none' }} aria-hidden>
+          {Array.from({ length: copies }, (_, i) => (
+            <div
+              key={i}
+              style={{ width: '5.07in', height: '2in', pageBreakAfter: i < copies - 1 ? 'always' : 'avoid' }}
+            >
+              <LabelCard {...labelData} />
+            </div>
+          ))}
+        </div>,
+        document.body
+      )}
+    </>
   )
 }
 
