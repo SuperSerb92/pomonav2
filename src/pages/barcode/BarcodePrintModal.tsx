@@ -31,8 +31,12 @@ export function BarcodePrintModal({ barcode, profile, onClose }: Props) {
   useEffect(() => {
     const style = document.createElement('style')
     style.id = 'pomona-print-style'
+    // size: 5.07in 2in matches the DevExpress report dimensions (PageWidth=507, PageHeight=200
+    // in hundredths-of-inch) used by the old Pomona app that worked correctly with Godex G530.
+    // The explicit "landscape" keyword ensures Chrome sets the correct Windows DEVMODE orientation
+    // flag so the driver doesn't rotate the content 90 degrees.
     style.textContent = `
-      @page { margin: 0; }
+      @page { size: 5.07in 2in landscape; margin: 0; }
       @media print {
         body > *:not(#pomona-print-labels) { display: none !important; }
         #pomona-print-labels { display: block !important; }
