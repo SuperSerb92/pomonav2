@@ -79,7 +79,7 @@ export function BarcodePrintModal({ barcode, profile, onClose, onCreateCopies }:
         : await onCreateCopies(copies)
 
       const makePageHtml = (value: string, isLast: boolean) => `
-        <div style="width:3.25in;height:2.20in;box-sizing:border-box;display:flex;flex-direction:column;border:1.5px solid #222;background:#fff;overflow:hidden;${!isLast ? 'page-break-after:always' : ''}">
+        <div style="width:4.25in;height:2.00in;box-sizing:border-box;display:flex;flex-direction:column;border:1.5px solid #222;background:#fff;overflow:hidden;${!isLast ? 'page-break-after:always' : ''}">
           <div style="background:#C4B5FD;color:#1C1B2A;padding:5px 10px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
             <span style="font-weight:700;font-size:10pt;letter-spacing:0.5px">${esc(farmName)}</span>
             <span style="font-size:7.5pt;opacity:0.9">Origin: Serbia</span>
@@ -116,7 +116,7 @@ export function BarcodePrintModal({ barcode, profile, onClose, onCreateCopies }:
 <head>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  @page { size: 3.25in 2.20in landscape; margin: 0; }
+  @page { size: 4.25in 2.00in landscape; margin: 0; }
   html, body {
     font-family: Arial, Helvetica, sans-serif;
     -webkit-print-color-adjust: exact;
@@ -127,18 +127,17 @@ export function BarcodePrintModal({ barcode, profile, onClose, onCreateCopies }:
 <body>${pages}</body>
 </html>`
 
-      const blob = new Blob([html], { type: 'text/html' })
-      const url = URL.createObjectURL(blob)
+      // Use srcdoc instead of a blob URL so frame-src CSP on production (Cloudflare HTTPS)
+      // never blocks the iframe — srcdoc has no URL and is not subject to frame-src.
       const iframe = document.createElement('iframe')
       iframe.setAttribute('aria-hidden', 'true')
       iframe.style.cssText = 'position:fixed;left:-9999px;top:0;border:0;width:4.25in;height:2.00in'
-      iframe.src = url
+      iframe.srcdoc = html
       document.body.appendChild(iframe)
       iframe.onload = () => {
         iframe.contentWindow?.print()
         iframe.contentWindow?.addEventListener('afterprint', () => {
           document.body.removeChild(iframe)
-          URL.revokeObjectURL(url)
         }, { once: true })
       }
     } catch (e: any) {
