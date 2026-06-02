@@ -288,6 +288,8 @@ export type Database = {
           culture_id: string
           repurchase_date: string
           neto: number
+          neto_shipped: number | null
+          difference: number | null
           no_of_boxes: number | null
           price_rsd: number | null
           price_eur: number | null
@@ -295,6 +297,8 @@ export type Database = {
           income_eur: number | null
           eur_rate: number | null
           notes: string | null
+          paid: boolean
+          paid_date: string | null
           created_at: string
           updated_at: string
         }
@@ -305,6 +309,8 @@ export type Database = {
           culture_id: string
           repurchase_date: string
           neto: number
+          neto_shipped?: number | null
+          difference?: number | null
           no_of_boxes?: number | null
           price_rsd?: number | null
           price_eur?: number | null
@@ -312,12 +318,16 @@ export type Database = {
           income_eur?: number | null
           eur_rate?: number | null
           notes?: string | null
+          paid?: boolean
+          paid_date?: string | null
         }
         Update: {
           buyer_id?: string
           culture_id?: string
           repurchase_date?: string
           neto?: number
+          neto_shipped?: number | null
+          difference?: number | null
           no_of_boxes?: number | null
           price_rsd?: number | null
           price_eur?: number | null
@@ -325,6 +335,8 @@ export type Database = {
           income_eur?: number | null
           eur_rate?: number | null
           notes?: string | null
+          paid?: boolean
+          paid_date?: string | null
           updated_at?: string
         }
         Relationships: []

@@ -21,7 +21,7 @@ import { useCultures } from '@/hooks/useCultures'
 import { useExchangeRate } from '@/hooks/useExchangeRate'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
-import { formatDate, formatCurrency, formatWeight } from '@/lib/formatters'
+import { formatCurrency, formatWeight } from '@/lib/formatters'
 import type { Repurchase } from '@/types/app.types'
 
 function localDateStr(d = new Date()) {
