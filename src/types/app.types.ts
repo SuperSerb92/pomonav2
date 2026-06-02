@@ -133,7 +133,9 @@ export interface Repurchase {
   buyer_id: string
   culture_id: string
   repurchase_date: string
-  neto: number
+  neto: number           // auto-filled from barcodes (harvested quantity)
+  neto_shipped: number | null  // actual amount sold to buyer (Net Repurchase)
+  difference: number | null    // neto_shipped - neto
   no_of_boxes: number | null
   price_rsd: number | null
   price_eur: number | null

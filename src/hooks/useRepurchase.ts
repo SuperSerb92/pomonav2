@@ -9,6 +9,8 @@ type RepurchaseInput = {
   culture_id: string
   repurchase_date: string
   neto: number
+  neto_shipped?: number | null
+  difference?: number | null
   no_of_boxes?: number | null
   price_rsd?: number | null
   price_eur?: number | null
@@ -43,7 +45,7 @@ export function useRepurchase() {
       const { error } = await supabase.from('repurchase').insert({ ...input, user_id: user!.id })
       if (error) throw error
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: key }); toast({ title: 'Repurchase recorded' }) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: key }); toast({ title: 'Purchase recorded' }) },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   })
 
@@ -52,7 +54,7 @@ export function useRepurchase() {
       const { error } = await supabase.from('repurchase').update({ ...input, updated_at: new Date().toISOString() }).eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: key }); toast({ title: 'Repurchase updated' }) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: key }); toast({ title: 'Purchase updated' }) },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   })
 

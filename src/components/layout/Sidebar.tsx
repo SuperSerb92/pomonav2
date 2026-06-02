@@ -73,7 +73,7 @@ export function Sidebar({ farmName, isCollapsed, onToggle }: SidebarProps) {
         <SidebarSection label="Operations" isCollapsed={isCollapsed}>
           <SidebarNavItem href="/barcode" icon={QrCode} label="Barcode Generator" requiredTier="pro" isCollapsed={isCollapsed} />
           <SidebarNavItem href="/work-evaluation" icon={ClipboardCheck} label="Work Evaluation" requiredTier="pro" isCollapsed={isCollapsed} />
-          <SidebarNavItem href="/repurchase" icon={RefreshCw} label="Repurchase" requiredTier="pro" isCollapsed={isCollapsed} />
+          <SidebarNavItem href="/repurchase" icon={RefreshCw} label="Purchase" requiredTier="pro" isCollapsed={isCollapsed} />
           <SidebarNavItem href="/scheduler" icon={CalendarDays} label="Scheduler" requiredTier="pro" isCollapsed={isCollapsed} />
         </SidebarSection>
 
