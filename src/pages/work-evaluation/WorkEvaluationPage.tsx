@@ -199,7 +199,9 @@ export default function WorkEvaluationPage() {
     updateRow(row.key, { saving: true })
     try {
       if (row.evalId) {
-        const { error } = await supabase.from('work_evaluations').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', row.evalId)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { user_id: _uid, ...updateFields } = payload
+        const { error } = await supabase.from('work_evaluations').update({ ...updateFields, updated_at: new Date().toISOString() }).eq('id', row.evalId)
         if (error) throw error
       } else {
         const { data, error } = await supabase.from('work_evaluations').insert(payload).select('id').single()
