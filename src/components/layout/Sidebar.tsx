@@ -78,8 +78,9 @@ export function Sidebar({ farmName, isCollapsed, onToggle }: SidebarProps) {
         </SidebarSection>
 
         <SidebarSection label="Reports" isCollapsed={isCollapsed}>
-          <SidebarNavItem href="/reports/work-summary" icon={BarChart2} label="Work Summary" requiredTier="business" isCollapsed={isCollapsed} />
-          <SidebarNavItem href="/reports/profit-loss" icon={TrendingUp} label="Profit & Loss" requiredTier="business" isCollapsed={isCollapsed} />
+          <SidebarNavItem href="/reports/work-summary"     icon={BarChart2}  label="Work Summary"     requiredTier="business" isCollapsed={isCollapsed} />
+          <SidebarNavItem href="/reports/purchase-summary" icon={RefreshCw}  label="Purchase Summary" requiredTier="business" isCollapsed={isCollapsed} />
+          <SidebarNavItem href="/reports/profit-loss"      icon={TrendingUp} label="Profit & Loss"    requiredTier="business" isCollapsed={isCollapsed} />
         </SidebarSection>
       </nav>
 

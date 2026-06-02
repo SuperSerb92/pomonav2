@@ -121,6 +121,69 @@ export function exportWorkEvaluationPdf(rows: WorkEvalRow[], date: string, farmN
   doc.save(`Work_Evaluation_${date}.pdf`)
 }
 
+interface PurchaseSummaryRow {
+  repurchase_date: string
+  culture: string
+  buyer: string
+  neto: number
+  neto_shipped: number | null
+  difference: number | null
+  no_of_boxes: number | null
+  price_rsd: number | null
+  income_rsd: number | null
+  income_eur: number | null
+  paid: boolean
+  paid_date: string | null
+  notes: string | null
+}
+
+export function exportPurchaseSummaryPdf(rows: PurchaseSummaryRow[], from: string, to: string) {
+  const doc = new jsPDF('l')
+
+  doc.setFontSize(14)
+  doc.text('Purchase Summary Report', 14, 15)
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  doc.text(`Period: ${from} – ${to}`, 14, 23)
+  doc.setTextColor(0)
+
+  const totNeto     = rows.reduce((s, r) => s + (r.neto ?? 0), 0)
+  const totShipped  = rows.reduce((s, r) => s + (r.neto_shipped ?? 0), 0)
+  const totBoxes    = rows.reduce((s, r) => s + (r.no_of_boxes ?? 0), 0)
+  const totIncRsd   = rows.reduce((s, r) => s + (r.income_rsd ?? 0), 0)
+  const totIncEur   = rows.reduce((s, r) => s + (r.income_eur ?? 0), 0)
+
+  autoTable(doc, {
+    startY: 29,
+    head: [['Date', 'Culture', 'Buyer', 'Neto (kg)', 'Net Purch.', 'Diff.', 'Boxes', 'Price/kg', 'Income RSD', 'Income EUR', 'Paid', 'Paid Date', 'Notes']],
+    body: rows.map((r) => [
+      r.repurchase_date,
+      r.culture,
+      r.buyer,
+      r.neto?.toFixed(3)          ?? '—',
+      r.neto_shipped?.toFixed(3)  ?? '—',
+      r.difference?.toFixed(3)    ?? '—',
+      r.no_of_boxes               ?? '—',
+      r.price_rsd?.toFixed(4)     ?? '—',
+      r.income_rsd?.toFixed(2)    ?? '—',
+      r.income_eur?.toFixed(2)    ?? '—',
+      r.paid ? 'Yes' : 'No',
+      r.paid_date ?? '—',
+      r.notes ?? '',
+    ]),
+    foot: [['TOTAL', '', '', totNeto.toFixed(3), totShipped.toFixed(3), '', totBoxes, '', totIncRsd.toFixed(2), totIncEur.toFixed(2), '', '', '']],
+    styles: { fontSize: 7 },
+    headStyles: { fillColor: GREEN, textColor: 255 },
+    footStyles: { fillColor: FOOT_BG, fontStyle: 'bold', textColor: 30 },
+    columnStyles: {
+      3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' },
+      8: { halign: 'right' }, 9: { halign: 'right' },
+    },
+  })
+
+  doc.save(`Purchase_Summary_${from}_${to}.pdf`)
+}
+
 export function exportProfitLossPdf(
   rows: ProfitRow[],
   from: string,

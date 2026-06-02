@@ -143,6 +143,8 @@ export interface Repurchase {
   income_eur: number | null
   eur_rate: number | null
   notes: string | null
+  paid: boolean
+  paid_date: string | null
   created_at: string
   buyer?: Buyer
   culture?: Culture

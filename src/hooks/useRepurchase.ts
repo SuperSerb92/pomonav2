@@ -18,6 +18,8 @@ type RepurchaseInput = {
   income_eur?: number | null
   eur_rate?: number | null
   notes?: string | null
+  paid?: boolean
+  paid_date?: string | null
 }
 
 export function useRepurchase() {

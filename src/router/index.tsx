@@ -23,6 +23,7 @@ import RepurchasePage from '@/pages/repurchase/RepurchasePage'
 import SchedulerPage from '@/pages/scheduler/SchedulerPage'
 import WorkSummaryPage from '@/pages/reports/WorkSummaryPage'
 import ProfitLossPage from '@/pages/reports/ProfitLossPage'
+import PurchaseSummaryPage from '@/pages/reports/PurchaseSummaryPage'
 import FarmMapPage from '@/pages/maps/FarmMapPage'
 import WeatherPage from '@/pages/weather/WeatherPage'
 import PricingPage from '@/pages/subscription/PricingPage'
@@ -63,8 +64,9 @@ export const router = createBrowserRouter([
           { path: 'scheduler', element: <PlanRoute min="pro"><SchedulerPage /></PlanRoute> },
 
           // Reports — Business
-          { path: 'reports/work-summary', element: <PlanRoute min="business"><WorkSummaryPage /></PlanRoute> },
-          { path: 'reports/profit-loss', element: <PlanRoute min="business"><ProfitLossPage /></PlanRoute> },
+          { path: 'reports/work-summary',     element: <PlanRoute min="business"><WorkSummaryPage /></PlanRoute> },
+          { path: 'reports/profit-loss',      element: <PlanRoute min="business"><ProfitLossPage /></PlanRoute> },
+          { path: 'reports/purchase-summary', element: <PlanRoute min="business"><PurchaseSummaryPage /></PlanRoute> },
 
           // Insights — Business
           { path: 'map', element: <PlanRoute min="business"><FarmMapPage /></PlanRoute> },
