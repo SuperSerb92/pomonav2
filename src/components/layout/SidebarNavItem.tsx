@@ -10,9 +10,10 @@ interface SidebarNavItemProps {
   icon: LucideIcon
   label: string
   requiredTier?: Tier
+  isCollapsed?: boolean
 }
 
-export function SidebarNavItem({ href, icon: Icon, label, requiredTier }: SidebarNavItemProps) {
+export function SidebarNavItem({ href, icon: Icon, label, requiredTier, isCollapsed }: SidebarNavItemProps) {
   const { canAccess } = useSubscription()
   const locked = requiredTier ? !canAccess(requiredTier) : false
 
@@ -20,9 +21,11 @@ export function SidebarNavItem({ href, icon: Icon, label, requiredTier }: Sideba
     <NavLink
       to={href}
       end
+      title={isCollapsed ? label : undefined}
       className={({ isActive }) =>
         cn(
-          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+          'flex items-center rounded-lg px-3 py-2 text-sm transition-colors',
+          isCollapsed ? 'justify-center px-2' : 'gap-3',
           isActive
             ? 'bg-sidebar-active text-white font-medium'
             : 'text-sidebar-text hover:bg-sidebar-hover hover:text-white',
@@ -31,8 +34,12 @@ export function SidebarNavItem({ href, icon: Icon, label, requiredTier }: Sideba
       }
     >
       <Icon className="h-4 w-4 shrink-0" />
-      <span className="flex-1">{label}</span>
-      {locked && <Lock className="h-3 w-3 text-pomona-lavender" />}
+      {!isCollapsed && (
+        <>
+          <span className="flex-1">{label}</span>
+          {locked && <Lock className="h-3 w-3 text-pomona-lavender" />}
+        </>
+      )}
     </NavLink>
   )
 }

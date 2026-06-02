@@ -123,8 +123,16 @@ export default function BarcodePage() {
   const columns: ColumnDef<Barcode>[] = [
     { accessorKey: 'barcode_value', header: 'Barcode', cell: ({ getValue }) => <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{getValue() as string}</code> },
     { accessorKey: 'created_at', header: 'Date', size: 110, cell: ({ getValue }) => formatDate(getValue() as string) },
-    { id: 'employee', header: 'Employee', cell: ({ row }) => row.original.employee ? `${(row.original.employee as any).surname} ${(row.original.employee as any).name}` : '—' },
-    { id: 'culture', header: 'Culture', cell: ({ row }) => (row.original.culture as any)?.culture_name ?? '—' },
+    {
+      id: 'employee', header: 'Employee',
+      accessorFn: (row) => { const e = row.employee as any; return e ? `${e.surname} ${e.name}` : '' },
+      cell: ({ row }) => { const e = row.original.employee as any; return e ? `${e.surname} ${e.name}` : '—' },
+    },
+    {
+      id: 'culture', header: 'Culture',
+      accessorFn: (row) => (row.culture as any)?.culture_name ?? '',
+      cell: ({ row }) => (row.original.culture as any)?.culture_name ?? '—',
+    },
     {
       id: 'status', header: 'Status', size: 90,
       cell: ({ row }) => row.original.is_storno
@@ -172,7 +180,7 @@ export default function BarcodePage() {
           {!isLoading && barcodes.length === 0 ? (
             <EmptyState icon={QrCode} title="No barcodes yet" description="Generate barcodes to track harvested goods." onAdd={openAdd} addLabel="Generate barcode" />
           ) : (
-            <DataTable columns={columns} data={barcodes} isLoading={isLoading} searchColumn="barcode_value" />
+            <DataTable columns={columns} data={barcodes} isLoading={isLoading} searchColumn="barcode_value" searchPlaceholder="Search by barcode, employee, culture…" />
           )}
         </TabsContent>
 

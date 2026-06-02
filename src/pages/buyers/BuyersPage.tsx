@@ -49,6 +49,7 @@ export default function BuyersPage() {
   const columns: ColumnDef<Buyer>[] = [
     { accessorKey: 'name', header: 'Name' },
     { accessorKey: 'pib', header: 'PIB', cell: ({ getValue }) => getValue() || '—' },
+    { accessorKey: 'jmbg', header: 'JMBG', cell: ({ getValue }) => getValue() || '—' },
     { accessorKey: 'phone', header: 'Phone', cell: ({ getValue }) => getValue() || '—' },
     { accessorKey: 'city', header: 'City', cell: ({ getValue }) => getValue() || '—' },
     { accessorKey: 'email', header: 'Email', cell: ({ getValue }) => getValue() || '—' },
