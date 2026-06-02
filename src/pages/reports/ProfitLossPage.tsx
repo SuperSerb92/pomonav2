@@ -25,13 +25,22 @@ interface ProfitRow {
   total_boxes: number
   total_expenses: number
   total_revenue: number
+  total_revenue_eur: number
+  net_purchase_kg: number
+  avg_price_rsd: number
+  avg_cost_price: number
   profit: number
+  expense_pct: number
+}
+
+function localDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 export default function ProfitLossPage() {
   const { user } = useAuth()
-  const today = new Date().toISOString().split('T')[0]
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+  const today         = localDateStr()
+  const thirtyDaysAgo = localDateStr(new Date(Date.now() - 30 * 86400000))
   const [from, setFrom] = useState(thirtyDaysAgo)
   const [to, setTo] = useState(today)
 
@@ -56,18 +65,23 @@ export default function ProfitLossPage() {
   const totalProfit = rows.reduce((s, r) => s + (r.profit ?? 0), 0)
 
   const columns: ColumnDef<ProfitRow>[] = [
-    { accessorKey: 'report_date', header: 'Date' },
-    { accessorKey: 'worker_count', header: 'Workers' },
-    { accessorKey: 'total_boxes', header: 'Boxes' },
-    { accessorKey: 'total_expenses', header: 'Expenses', cell: ({ getValue }) => formatCurrency(getValue() as number) },
-    { accessorKey: 'total_revenue', header: 'Revenue', cell: ({ getValue }) => formatCurrency(getValue() as number) },
+    { accessorKey: 'report_date',    header: 'Date' },
+    { accessorKey: 'worker_count',   header: 'Workers' },
+    { accessorKey: 'total_boxes',    header: 'Boxes' },
+    { accessorKey: 'net_purchase_kg', header: 'Net Purchase (kg)', cell: ({ getValue }) => getValue() != null ? (getValue() as number).toFixed(3) : '—' },
+    { accessorKey: 'total_expenses', header: 'Expenses (RSD)',     cell: ({ getValue }) => formatCurrency(getValue() as number) },
+    { accessorKey: 'total_revenue',  header: 'Revenue (RSD)',      cell: ({ getValue }) => formatCurrency(getValue() as number) },
+    { accessorKey: 'total_revenue_eur', header: 'Revenue (EUR)',   cell: ({ getValue }) => formatCurrency(getValue() as number, 'EUR') },
+    { accessorKey: 'avg_price_rsd',  header: 'Avg Price (RSD/kg)', cell: ({ getValue }) => getValue() != null ? formatCurrency(getValue() as number) : '—' },
+    { accessorKey: 'avg_cost_price', header: 'Avg Cost (RSD/kg)',  cell: ({ getValue }) => getValue() != null ? formatCurrency(getValue() as number) : '—' },
     {
-      accessorKey: 'profit', header: 'Profit',
+      accessorKey: 'profit', header: 'Profit (RSD)',
       cell: ({ getValue }) => {
         const v = getValue() as number
         return <span className={v >= 0 ? 'text-pomona-green font-medium' : 'text-destructive font-medium'}>{formatCurrency(v)}</span>
       },
     },
+    { accessorKey: 'expense_pct', header: 'Expense %', cell: ({ getValue }) => getValue() != null ? `${(getValue() as number).toFixed(1)}%` : '—' },
   ]
 
   return (

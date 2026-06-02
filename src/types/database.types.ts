@@ -434,7 +434,12 @@ export type Database = {
           total_boxes: number | null
           total_expenses: number | null
           total_revenue: number | null
+          total_revenue_eur: number | null
+          net_purchase_kg: number | null
+          avg_price_rsd: number | null
+          avg_cost_price: number | null
           profit: number | null
+          expense_pct: number | null
         }
         Relationships: []
       }

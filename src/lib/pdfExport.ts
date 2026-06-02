@@ -20,7 +20,12 @@ interface ProfitRow {
   total_boxes: number
   total_expenses: number
   total_revenue: number
+  total_revenue_eur: number
+  net_purchase_kg: number
+  avg_price_rsd: number
+  avg_cost_price: number
   profit: number
+  expense_pct: number
 }
 
 export function exportWorkSummaryPdf(rows: WorkSummaryRow[], from: string, to: string) {
@@ -198,29 +203,34 @@ export function exportProfitLossPdf(
   doc.setTextColor(100)
   doc.text(`Period: ${from} – ${to}`, 14, 23)
 
+  const totNetKg  = rows.reduce((s, r) => s + (r.net_purchase_kg  ?? 0), 0)
+  const totRevEur = rows.reduce((s, r) => s + (r.total_revenue_eur ?? 0), 0)
+
   autoTable(doc, {
     startY: 29,
-    head: [['Date', 'Workers', 'Boxes', 'Expenses (RSD)', 'Revenue (RSD)', 'Profit (RSD)']],
+    head: [['Date', 'Workers', 'Boxes', 'Net Purch.(kg)', 'Expenses', 'Revenue (RSD)', 'Revenue (EUR)', 'Avg Price', 'Avg Cost', 'Profit', 'Exp %']],
     body: rows.map((r) => [
       r.report_date,
-      r.worker_count ?? '—',
-      r.total_boxes ?? '—',
-      r.total_expenses?.toFixed(2) ?? '—',
-      r.total_revenue?.toFixed(2) ?? '—',
-      r.profit?.toFixed(2) ?? '—',
+      r.worker_count           ?? '—',
+      r.total_boxes            ?? '—',
+      r.net_purchase_kg?.toFixed(3)  ?? '—',
+      r.total_expenses?.toFixed(2)   ?? '—',
+      r.total_revenue?.toFixed(2)    ?? '—',
+      r.total_revenue_eur?.toFixed(2) ?? '—',
+      r.avg_price_rsd?.toFixed(2)    ?? '—',
+      r.avg_cost_price?.toFixed(2)   ?? '—',
+      r.profit?.toFixed(2)           ?? '—',
+      r.expense_pct != null ? `${r.expense_pct.toFixed(1)}%` : '—',
     ]),
-    foot: [[
-      'TOTAL',
-      '',
-      '',
-      totals.expenses.toFixed(2),
-      totals.revenue.toFixed(2),
-      totals.profit.toFixed(2),
-    ]],
-    styles: { fontSize: 9 },
+    foot: [['TOTAL', '', '', totNetKg.toFixed(3), totals.expenses.toFixed(2), totals.revenue.toFixed(2), totRevEur.toFixed(2), '', '', totals.profit.toFixed(2), '']],
+    styles: { fontSize: 7 },
     headStyles: { fillColor: LAVENDER, textColor: 30 },
     footStyles: { fillColor: FOOT_BG, fontStyle: 'bold', textColor: 30 },
-    columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } },
+    columnStyles: {
+      3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' },
+      6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' },
+      9: { halign: 'right' },
+    },
   })
 
   doc.save('Profit_Loss_Report.pdf')
