@@ -50,11 +50,75 @@ export function exportWorkSummaryPdf(rows: WorkSummaryRow[], from: string, to: s
     foot: [['TOTAL', `${rows.length} records`, totNeto.toFixed(3), totBoxes, totPay.toFixed(0), '']],
     styles: { fontSize: 9 },
     headStyles: { fillColor: GREEN, textColor: 255 },
-    footStyles: { fillColor: FOOT_BG, fontStyle: 'bold' },
+    footStyles: { fillColor: FOOT_BG, fontStyle: 'bold', textColor: 30 },
     columnStyles: { 2: { halign: 'right' }, 4: { halign: 'right' } },
   })
 
   doc.save('Work_Summary_Report.pdf')
+}
+
+interface WorkEvalRow {
+  employeeName: string
+  neto: number
+  noOfBoxes: number
+  payPerDay: string
+  expenseKg: string
+  fuel: string
+  bonus: string
+  total: number
+  evaluation: string
+  notes: string
+}
+
+export function exportWorkEvaluationPdf(rows: WorkEvalRow[], date: string, farmName: string) {
+  const doc = new jsPDF('l')
+
+  doc.setFontSize(14)
+  doc.text('Work Evaluation', 14, 15)
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  doc.text(`${farmName}   |   Date: ${date}`, 14, 23)
+  doc.setTextColor(0)
+
+  const totNeto  = rows.reduce((s, r) => s + r.neto, 0)
+  const totBoxes = rows.reduce((s, r) => s + r.noOfBoxes, 0)
+  const totTotal = rows.reduce((s, r) => s + r.total, 0)
+
+  autoTable(doc, {
+    startY: 29,
+    head: [['#', 'Employee', 'Neto (kg)', 'Boxes', 'Pay/Day', 'Exp/kg', 'Fuel', 'Bonus', 'Total (RSD)', 'Rating', 'Notes']],
+    body: rows.map((r, i) => [
+      i + 1,
+      r.employeeName,
+      r.neto.toFixed(3),
+      r.noOfBoxes,
+      r.payPerDay  || '—',
+      r.expenseKg  || '—',
+      r.fuel       || '—',
+      r.bonus      || '—',
+      r.total > 0 ? r.total.toFixed(0) : '—',
+      '★'.repeat(parseInt(r.evaluation) || 0) || '—',
+      r.notes || '',
+    ]),
+    foot: [[
+      '', `${rows.length} workers`,
+      totNeto.toFixed(3), totBoxes,
+      '', '', '', '',
+      totTotal.toFixed(0), '', '',
+    ]],
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: GREEN, textColor: 255 },
+    footStyles: { fillColor: FOOT_BG, fontStyle: 'bold', textColor: 30 },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 10 },
+      2: { halign: 'right' }, 3: { halign: 'right' },
+      4: { halign: 'right' }, 5: { halign: 'right' },
+      6: { halign: 'right' }, 7: { halign: 'right' },
+      8: { halign: 'right' },
+    },
+  })
+
+  doc.save(`Work_Evaluation_${date}.pdf`)
 }
 
 export function exportProfitLossPdf(
@@ -92,7 +156,7 @@ export function exportProfitLossPdf(
     ]],
     styles: { fontSize: 9 },
     headStyles: { fillColor: LAVENDER, textColor: 30 },
-    footStyles: { fillColor: FOOT_BG, fontStyle: 'bold' },
+    footStyles: { fillColor: FOOT_BG, fontStyle: 'bold', textColor: 30 },
     columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } },
   })
 

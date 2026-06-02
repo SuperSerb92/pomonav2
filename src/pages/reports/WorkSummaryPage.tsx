@@ -26,10 +26,14 @@ interface SummaryRow {
   avg_evaluation: number
 }
 
+function localDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export default function WorkSummaryPage() {
   const { user } = useAuth()
-  const today = new Date().toISOString().split('T')[0]
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+  const today = localDateStr()
+  const thirtyDaysAgo = localDateStr(new Date(Date.now() - 30 * 86400000))
   const [from, setFrom] = useState(thirtyDaysAgo)
   const [to, setTo] = useState(today)
 
