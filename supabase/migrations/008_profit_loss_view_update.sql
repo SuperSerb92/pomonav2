@@ -1,7 +1,10 @@
 -- Extend profit_loss_daily view with columns matching the old Pomona app:
 -- net_purchase_kg, total_revenue_eur, avg_price_rsd, avg_cost_price, expense_pct
+-- Must drop first because CREATE OR REPLACE cannot reorder/add columns before existing ones.
 
-create or replace view public.profit_loss_daily as
+drop view if exists public.profit_loss_daily;
+
+create view public.profit_loss_daily as
 with rep_daily as (
   select
     user_id,
