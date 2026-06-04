@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
@@ -61,7 +62,14 @@ export default function BarcodePage() {
   const { profile } = useProfile()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [printTarget, setPrintTarget] = useState<Barcode | null>(null)
-  const { stornoTarget, setStornoTarget, storno } = useStornoBarcode()
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [batchTarget, setBatchTarget] = useState<Barcode[] | null>(null)
+  const { stornoTarget, setStornoTarget, storno, stornoMultiple } = useStornoBarcode()
+
+  const toggleSelect = (id: string) => setSelectedIds(prev => {
+    const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next
+  })
+  const clearSelection = () => setSelectedIds(new Set())
 
   const key = ['barcodes', user?.id]
 
@@ -112,7 +120,31 @@ const { handleSubmit, register, setValue, watch, reset, formState: { errors } } 
   const selectedCultureId = watch('culture_id')
   const filteredTypes = cultureTypes.filter((ct) => ct.culture_id === selectedCultureId)
 
+  const activeBarcodesForSelection = barcodes.filter(b => !b.is_storno)
+  const allSelected = activeBarcodesForSelection.length > 0 && activeBarcodesForSelection.every(b => selectedIds.has(b.id))
+  const someSelected = activeBarcodesForSelection.some(b => selectedIds.has(b.id))
+
   const columns: ColumnDef<Barcode>[] = [
+    {
+      id: 'select', size: 40,
+      header: () => (
+        <Checkbox
+          checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+          onCheckedChange={(v) => v
+            ? setSelectedIds(new Set(activeBarcodesForSelection.map(b => b.id)))
+            : clearSelection()
+          }
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => row.original.is_storno ? null : (
+        <Checkbox
+          checked={selectedIds.has(row.original.id)}
+          onCheckedChange={() => toggleSelect(row.original.id)}
+          aria-label="Select row"
+        />
+      ),
+    },
     { accessorKey: 'barcode_value', header: 'Barcode', cell: ({ getValue }) => <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{getValue() as string}</code> },
     { accessorKey: 'created_at', header: 'Date', size: 110, cell: ({ getValue }) => formatDate(getValue() as string) },
     {
@@ -164,7 +196,22 @@ const { handleSubmit, register, setValue, watch, reset, formState: { errors } } 
 
         {/* GENERATOR TAB */}
         <TabsContent value="generator">
-          <div className="flex justify-end mb-4">
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <div className="flex items-center gap-2">
+              {selectedIds.size > 0 && (
+                <>
+                  <span className="text-sm text-muted-foreground">{selectedIds.size} selected</span>
+                  <Button
+                    size="sm" variant="destructive"
+                    onClick={() => setBatchTarget(barcodes.filter(b => selectedIds.has(b.id)))}
+                    disabled={stornoMultiple.isPending}
+                  >
+                    <Ban className="h-3.5 w-3.5 mr-1.5" />Cancel selected
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={clearSelection}>Clear</Button>
+                </>
+              )}
+            </div>
             <Button className="bg-pomona-green hover:bg-pomona-green/90" onClick={openAdd}>
               Generate barcode
             </Button>
@@ -274,6 +321,32 @@ const { handleSubmit, register, setValue, watch, reset, formState: { errors } } 
       return (data as { barcode_value: string }[]).map(r => r.barcode_value)
     }}
   />
+
+      {/* Batch storno confirm dialog */}
+      <Dialog open={!!batchTarget} onOpenChange={() => setBatchTarget(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Cancel {batchTarget?.length} barcodes?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {(() => {
+              const m = batchTarget?.filter(b => b.bruto != null && b.bruto > 0).length ?? 0
+              return m > 0
+                ? `${m} of these have been weighed. Their weight data will be cleared and work evaluations updated.`
+                : 'All selected barcodes will be marked as cancelled.'
+            })()}
+            {' '}This cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBatchTarget(null)}>Keep</Button>
+            <Button
+              variant="destructive"
+              disabled={stornoMultiple.isPending}
+              onClick={() => { stornoMultiple.mutate(batchTarget!); setBatchTarget(null); clearSelection() }}
+            >
+              Cancel {batchTarget?.length} barcodes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Storno confirm dialog */}
       <Dialog open={!!stornoTarget} onOpenChange={() => setStornoTarget(null)}>

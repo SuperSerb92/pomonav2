@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
 import { useProfile } from '@/hooks/useProfile'
@@ -26,7 +27,14 @@ export function BarcodeReaderTab() {
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const [pendingBruto, setPendingBruto] = useState<Record<string, string>>({})
   const [printTarget, setPrintTarget] = useState<Barcode | null>(null)
-  const { stornoTarget, setStornoTarget, storno } = useStornoBarcode()
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [batchTarget, setBatchTarget] = useState<Barcode[] | null>(null)
+  const { stornoTarget, setStornoTarget, storno, stornoMultiple } = useStornoBarcode()
+
+  const toggleSelect = (id: string) => setSelectedIds(prev => {
+    const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next
+  })
+  const clearSelection = () => setSelectedIds(new Set())
   const [filterEmployee, setFilterEmployee] = useState('')
   const [filterDate, setFilterDate] = useState('')
   const [filterCulture, setFilterCulture] = useState('')
@@ -233,6 +241,21 @@ export function BarcodeReaderTab() {
         )}
       </div>
 
+      {/* Batch selection toolbar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-muted/40">
+          <span className="text-sm text-muted-foreground">{selectedIds.size} selected</span>
+          <Button
+            size="sm" variant="destructive"
+            onClick={() => setBatchTarget(filteredBarcodes.filter(b => selectedIds.has(b.id)))}
+            disabled={stornoMultiple.isPending}
+          >
+            <Ban className="h-3.5 w-3.5 mr-1.5" />Cancel selected
+          </Button>
+          <Button size="sm" variant="ghost" onClick={clearSelection}>Clear</Button>
+        </div>
+      )}
+
       {barcodes.length === 0 ? (
         <p className="text-sm text-muted-foreground py-6 text-center">No active barcodes in the last 4 days.</p>
       ) : filteredBarcodes.length === 0 ? (
@@ -242,6 +265,22 @@ export function BarcodeReaderTab() {
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40">
               <tr>
+                <th className="px-3 py-2.5 text-left font-medium text-muted-foreground w-10">
+                  {(() => {
+                    const allChecked = filteredBarcodes.length > 0 && filteredBarcodes.every(b => selectedIds.has(b.id))
+                    const someChecked = filteredBarcodes.some(b => selectedIds.has(b.id))
+                    return (
+                      <Checkbox
+                        checked={allChecked ? true : someChecked ? 'indeterminate' : false}
+                        onCheckedChange={(v) => v
+                          ? setSelectedIds(new Set(filteredBarcodes.map(b => b.id)))
+                          : clearSelection()
+                        }
+                        aria-label="Select all"
+                      />
+                    )
+                  })()}
+                </th>
                 <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Barcode</th>
                 <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Employee</th>
                 <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Date</th>
@@ -272,6 +311,13 @@ export function BarcodeReaderTab() {
                       isHighlighted ? 'bg-pomona-green/10 ring-1 ring-inset ring-pomona-green/40' : 'hover:bg-muted/30'
                     )}
                   >
+                    <td className="px-3 py-2">
+                      <Checkbox
+                        checked={selectedIds.has(b.id)}
+                        onCheckedChange={() => toggleSelect(b.id)}
+                        aria-label="Select row"
+                      />
+                    </td>
                     <td className="px-3 py-2">
                       <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{b.barcode_value}</code>
                     </td>
@@ -358,6 +404,32 @@ export function BarcodeReaderTab() {
         </div>
       )}
     </div>
+
+    {/* Batch storno confirm dialog */}
+    <Dialog open={!!batchTarget} onOpenChange={() => setBatchTarget(null)}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader><DialogTitle>Cancel {batchTarget?.length} barcodes?</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          {(() => {
+            const m = batchTarget?.filter(b => b.bruto != null && b.bruto > 0).length ?? 0
+            return m > 0
+              ? `${m} of these have been weighed. Their weight data will be cleared and work evaluations updated.`
+              : 'All selected barcodes will be marked as cancelled.'
+          })()}
+          {' '}This cannot be undone.
+        </p>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setBatchTarget(null)}>Keep</Button>
+          <Button
+            variant="destructive"
+            disabled={stornoMultiple.isPending}
+            onClick={() => { stornoMultiple.mutate(batchTarget!); setBatchTarget(null); clearSelection() }}
+          >
+            Cancel {batchTarget?.length} barcodes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     {/* Storno confirm dialog */}
     <Dialog open={!!stornoTarget} onOpenChange={() => setStornoTarget(null)}>
