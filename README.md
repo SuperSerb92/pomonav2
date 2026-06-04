@@ -68,7 +68,7 @@ A modern farm management SaaS application — rebuilt from the original Pomona (
 - **Plot Lists** — groupings for organizing plots
 - **Plots** — individual parcels linked to plot lists
 - **Barcode** — three-tab page:
-  - **Generator** — create barcodes with mandatory employee / culture / culture type / packaging / plot assignments and a date picker (defaults to today, can be set in advance to pre-create barcodes for future harvests). Print labels (CODE128, 4.25"×2" thermal label layout with lavender header showing farm name and origin, lot code, variety, worker, GGN). Checkbox selection for bulk operations.
+  - **Generator** — create barcodes with mandatory employee / culture / culture type / packaging / plot assignments, a date picker (defaults to today, supports future dates), and a **quantity field** (1–99) to generate multiple unique barcodes in one go. After generation the dialog asks "Print now?" — yes opens the print modal immediately, no saves and closes. Print later from the table prints only that barcode's label (no new records created). Print labels: CODE128, 4.25"×2" thermal layout with lavender header showing farm name and origin, lot code, variety, worker, GGN. Checkbox selection for bulk storno.
   - **Reader** — scan barcodes via a hardware scanner, enter Bruto weight manually or read directly from a serial scale via the Web Serial API (9600/8N1, `P` command), Neto auto-calculated (Bruto − Tara); real-time save per row. Filter by employee, date, culture, or measured status. Checkbox selection for bulk operations.
   - **Storno** — history of all cancelled barcodes. Storno can be triggered from both the Generator and Reader tabs, individually or in bulk. **Smart storno logic:** if a barcode has been weighed (Measured = Yes), storno clears `bruto`/`neto` and automatically recalculates and updates the saved Work Evaluation for that employee and date, keeping reports accurate. If Measured = No, only the status is changed.
 - **Work Evaluation** — daily employee performance tracking with star ratings (1–3), neto weight (auto-summed from barcode measurements), box count, pay per day, expense per kg, fuel, bonus, and totals
@@ -303,26 +303,39 @@ Example coordinates for Belgrade, Serbia: `lat: 44.8176`, `lng: 20.4569`
 
 ## Barcode Workflow
 
-### Creating barcodes in advance
+### 1. Generate
 
-The Generate Barcode dialog requires all fields (employee, culture, culture type, packaging, plot) and includes a **date picker** that defaults to today. Set a future date to pre-create barcodes before harvest day.
+Open **Barcodes → Generator** and click **Generate barcodes**. Fill in all required fields:
 
-### Weighing barcodes
+| Field | Notes |
+|---|---|
+| Date | Defaults to today. Set a future date to pre-create barcodes before harvest. |
+| Number of barcodes | 1–99. Each gets its own unique barcode ID — one per crate. |
+| Employee, Culture, Culture type, Packaging, Plot | All mandatory. |
+
+After clicking Generate the dialog moves to a confirmation step: *"X barcodes saved. Print now?"*
+
+- **Print now** → opens the print modal with all N labels ready to print in one pass
+- **Done** → closes the dialog; barcodes are already saved in the table
+
+### 2. Print later
+
+Click the **⋯ menu → Print label** on any row in the Generator tab, or the **printer icon** in the Reader tab. This prints only that one barcode's label — no new records are created.
+
+### 3. Weigh
 
 Open the **Reader** tab. Scan or type a barcode value and press Enter — the matching row is highlighted. Use the inline Bruto input or connect a serial scale to read weight directly. Neto is calculated automatically (Bruto − Tara from the packaging record).
 
-### Storno logic
+Use the filters (Employee, Date, Culture, Measured) to narrow down the list. Check individual rows or use the header checkbox to select all visible rows.
 
-When cancelling a barcode:
+### 4. Storno
 
 | Barcode state | What happens |
 |---|---|
 | **Not weighed** (Measured = No) | `is_storno = true` only — no side effects |
 | **Weighed** (Measured = Yes) | `is_storno = true`, `bruto` and `neto` set to null, and the saved Work Evaluation for that employee on that date is recalculated automatically |
 
-This keeps Work Evaluation totals and Profit & Loss reports accurate without manual correction. A confirmation dialog always describes what will happen before committing.
-
-Storno is available from both tabs (individual Ban button or checkbox bulk selection).
+A confirmation dialog always describes what will happen. Storno is available individually (Ban icon) or in bulk (checkbox selection → Cancel selected) from both the Generator and Reader tabs.
 
 ---
 
