@@ -26,6 +26,7 @@ import { usePackaging } from '@/hooks/usePackaging'
 import { usePlots } from '@/hooks/usePlots'
 import { formatDate } from '@/lib/formatters'
 import { toast } from '@/hooks/useToast'
+import { useStornoBarcode } from '@/hooks/useStornoBarcode'
 import { BarcodeReaderTab } from './BarcodeReaderTab'
 import { BarcodeStornoTab } from './BarcodeStornoTab'
 import { BarcodePrintModal } from './BarcodePrintModal'
@@ -59,8 +60,8 @@ export default function BarcodePage() {
   const { plots } = usePlots()
   const { profile } = useProfile()
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [stornoTarget, setStornoTarget] = useState<string | null>(null)
   const [printTarget, setPrintTarget] = useState<Barcode | null>(null)
+  const { stornoTarget, setStornoTarget, storno } = useStornoBarcode()
 
   const key = ['barcodes', user?.id]
 
@@ -98,21 +99,7 @@ export default function BarcodePage() {
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   })
 
-  const storno = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('barcodes').update({ is_storno: true, storno_at: new Date().toISOString() }).eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: key })
-      queryClient.invalidateQueries({ queryKey: ['barcodes-reader', user?.id] })
-      queryClient.invalidateQueries({ queryKey: ['barcodes-storno', user?.id] })
-      toast({ title: 'Barcode cancelled' })
-    },
-    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
-  })
-
-  const { handleSubmit, register, setValue, watch, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) as never })
+const { handleSubmit, register, setValue, watch, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) as never })
 
   const onSubmit = async (data: FormData) => {
     await create.mutateAsync(data)
@@ -154,7 +141,7 @@ export default function BarcodePage() {
               <Printer className="mr-2 h-4 w-4" />Print label
             </DropdownMenuItem>
             {!row.original.is_storno && (
-              <DropdownMenuItem className="text-destructive" onClick={() => setStornoTarget(row.original.id)}>
+              <DropdownMenuItem className="text-destructive" onClick={() => setStornoTarget(row.original)}>
                 <Ban className="mr-2 h-4 w-4" />Cancel (Storno)
               </DropdownMenuItem>
             )}
@@ -292,7 +279,12 @@ export default function BarcodePage() {
       <Dialog open={!!stornoTarget} onOpenChange={() => setStornoTarget(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Cancel barcode?</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">This will mark the barcode as cancelled (storno). This cannot be undone.</p>
+          <p className="text-sm text-muted-foreground">
+            {stornoTarget?.bruto != null && stornoTarget.bruto > 0
+              ? 'This barcode has been weighed. Cancelling it will clear the weight data and update the work evaluation for that day.'
+              : 'This will mark the barcode as cancelled (storno).'}
+            {' '}This cannot be undone.
+          </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setStornoTarget(null)}>Keep</Button>
             <Button variant="destructive" onClick={() => { storno.mutate(stornoTarget!); setStornoTarget(null) }} disabled={storno.isPending}>

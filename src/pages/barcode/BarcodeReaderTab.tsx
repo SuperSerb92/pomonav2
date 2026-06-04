@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { ScanLine, Save, Printer, Scale, Plug, PlugZap, Loader2, Search, X } from 'lucide-react'
+import { ScanLine, Save, Printer, Scale, Plug, PlugZap, Loader2, Search, X, Ban } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -8,9 +8,11 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
 import { useProfile } from '@/hooks/useProfile'
 import { useSerialScale } from '@/hooks/useSerialScale'
+import { useStornoBarcode } from '@/hooks/useStornoBarcode'
 import { formatDate } from '@/lib/formatters'
 import { toast } from '@/hooks/useToast'
 import { cn } from '@/lib/utils'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { BarcodePrintModal } from './BarcodePrintModal'
 import type { Barcode } from '@/types/app.types'
 
@@ -24,6 +26,7 @@ export function BarcodeReaderTab() {
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const [pendingBruto, setPendingBruto] = useState<Record<string, string>>({})
   const [printTarget, setPrintTarget] = useState<Barcode | null>(null)
+  const { stornoTarget, setStornoTarget, storno } = useStornoBarcode()
   const [filterEmployee, setFilterEmployee] = useState('')
   const [filterDate, setFilterDate] = useState('')
   const [filterCulture, setFilterCulture] = useState('')
@@ -336,6 +339,15 @@ export function BarcodeReaderTab() {
                         >
                           <Printer className="h-3.5 w-3.5" />
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setStornoTarget(b)}
+                          title="Cancel (Storno)"
+                        >
+                          <Ban className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -346,6 +358,29 @@ export function BarcodeReaderTab() {
         </div>
       )}
     </div>
+
+    {/* Storno confirm dialog */}
+    <Dialog open={!!stornoTarget} onOpenChange={() => setStornoTarget(null)}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader><DialogTitle>Cancel barcode?</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          {stornoTarget?.bruto != null && stornoTarget.bruto > 0
+            ? 'This barcode has been weighed. Cancelling it will clear the weight data and update the work evaluation for that day.'
+            : 'This will mark the barcode as cancelled (storno).'}
+          {' '}This cannot be undone.
+        </p>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setStornoTarget(null)}>Keep</Button>
+          <Button
+            variant="destructive"
+            onClick={() => { storno.mutate(stornoTarget!); setStornoTarget(null) }}
+            disabled={storno.isPending}
+          >
+            Cancel barcode
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     <BarcodePrintModal
       barcode={printTarget}
