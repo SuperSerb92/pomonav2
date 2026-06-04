@@ -68,10 +68,10 @@ A modern farm management SaaS application — rebuilt from the original Pomona (
 - **Plot Lists** — groupings for organizing plots
 - **Plots** — individual parcels linked to plot lists
 - **Barcode** — three-tab page:
-  - **Generator** — create barcodes with employee/culture/packaging/plot assignments; print labels (CODE128, 5.07"×2" thermal label layout with lavender header, lot code, variety, worker, grower)
-  - **Reader** — scan barcodes via a hardware scanner, enter Bruto weight manually or read directly from a serial scale via the Web Serial API (9600/8N1, `P` command), Neto auto-calculated (Bruto − Tara); real-time save per row
-  - **Storno** — history of all cancelled barcodes; individual storno from Generator or Reader moves barcodes here instantly
-- **Work Evaluation** — daily employee performance tracking with star ratings (1–3), neto weight, box count, pay per day, expense per kg, fuel, bonus, and totals
+  - **Generator** — create barcodes with mandatory employee / culture / culture type / packaging / plot assignments and a date picker (defaults to today, can be set in advance to pre-create barcodes for future harvests). Print labels (CODE128, 4.25"×2" thermal label layout with lavender header showing farm name and origin, lot code, variety, worker, GGN). Checkbox selection for bulk operations.
+  - **Reader** — scan barcodes via a hardware scanner, enter Bruto weight manually or read directly from a serial scale via the Web Serial API (9600/8N1, `P` command), Neto auto-calculated (Bruto − Tara); real-time save per row. Filter by employee, date, culture, or measured status. Checkbox selection for bulk operations.
+  - **Storno** — history of all cancelled barcodes. Storno can be triggered from both the Generator and Reader tabs, individually or in bulk. **Smart storno logic:** if a barcode has been weighed (Measured = Yes), storno clears `bruto`/`neto` and automatically recalculates and updates the saved Work Evaluation for that employee and date, keeping reports accurate. If Measured = No, only the status is changed.
+- **Work Evaluation** — daily employee performance tracking with star ratings (1–3), neto weight (auto-summed from barcode measurements), box count, pay per day, expense per kg, fuel, bonus, and totals
 - **Repurchase** — crop purchase records with dual-currency support (RSD + EUR), buyer and culture links. Live EUR/RSD rate fetched from the National Bank of Serbia (NBS) — choose between Srednji kurs or Prodajni kurs; Income (RSD/EUR) and Price (EUR) are auto-calculated when entering Price/kg (RSD)
 - **Scheduler** — interactive monthly calendar with color-coded events, click-to-add, click-to-delete
 
@@ -93,6 +93,11 @@ A modern farm management SaaS application — rebuilt from the original Pomona (
   - Stripe Customer Portal for self-serve plan management (upgrade, downgrade, cancel)
   - Feature gating — locked pages show an upgrade prompt instead of content
   - Sidebar lock icons on gated sections
+
+### Settings
+
+- **Farm Profile** — farm name, registration number, GGN (GlobalG.A.P. Number), origin country, and GPS coordinates (used for Map & Weather). GGN and Origin are printed on barcode labels.
+- **Account** — editable first name and last name; read-only email; billing management link for Stripe customers.
 
 ### Reports (Business tier)
 
@@ -124,23 +129,28 @@ PomonaV2/
 │   │   ├── work-evaluation/ # WorkEvaluationPage
 │   │   ├── repurchase/      # RepurchasePage
 │   │   ├── scheduler/       # SchedulerPage
-│   │   ├── reports/         # WorkSummaryPage, ProfitLossPage
+│   │   ├── reports/         # WorkSummaryPage, ProfitLossPage, PurchaseSummaryPage
 │   │   ├── maps/            # FarmMapPage (standalone, no sidebar link)
 │   │   ├── weather/         # WeatherPage (standalone, no sidebar link)
 │   │   ├── subscription/    # PricingPage, SubscriptionSuccessPage
 │   │   └── settings/        # SettingsPage
-│   ├── hooks/               # useAuth, useProfile, useSubscription, useWeather, useSerialScale, etc.
+│   ├── hooks/               # useAuth, useProfile, useSubscription, useWeather, useSerialScale,
+│   │                        # useStornoBarcode, useEmployees, useCultures, usePackaging, usePlots, etc.
 │   ├── context/             # AuthContext, SubscriptionContext
 │   ├── router/              # index.tsx, ProtectedRoute, PlanRoute
 │   ├── lib/                 # supabase.ts, queryClient.ts, constants.ts, formatters.ts, pdfExport.ts, utils.ts
 │   └── types/               # app.types.ts, database.types.ts
 ├── supabase/
 │   ├── migrations/
-│   │   ├── 001_profiles.sql
-│   │   ├── 002_master_data.sql
-│   │   ├── 003_operational.sql
-│   │   ├── 004_reports_views.sql
-│   │   └── 005_subscriptions.sql
+│   │   ├── 001_profiles.sql          # profiles table (id, first_name, last_name, farm_name, farm_no, farm_lat, farm_lng)
+│   │   ├── 002_master_data.sql       # employees, buyers, cultures, culture_types, packaging, plot_lists, plots
+│   │   ├── 003_operational.sql       # barcodes, work_evaluations, repurchase, scheduler_events; RLS policies
+│   │   ├── 004_reports_views.sql     # work_summary_by_employee and profit_loss_daily views
+│   │   ├── 005_subscriptions.sql     # subscriptions table + Stripe tier management
+│   │   ├── 006_repurchase_neto_shipped.sql  # add neto_shipped column to repurchase
+│   │   ├── 007_repurchase_paid.sql          # add paid/paid_at tracking to repurchase
+│   │   ├── 008_profit_loss_view_update.sql  # extend profit_loss_daily with EUR, avg price, expense %
+│   │   └── 009_profiles_ggn.sql             # add ggn and origin columns to profiles
 │   └── functions/
 │       ├── stripe-webhook/
 │       ├── create-checkout-session/
@@ -176,6 +186,10 @@ In your Supabase project, open the **SQL Editor** and run each migration file in
 3. `supabase/migrations/003_operational.sql`
 4. `supabase/migrations/004_reports_views.sql`
 5. `supabase/migrations/005_subscriptions.sql`
+6. `supabase/migrations/006_repurchase_neto_shipped.sql`
+7. `supabase/migrations/007_repurchase_paid.sql`
+8. `supabase/migrations/008_profit_loss_view_update.sql`
+9. `supabase/migrations/009_profiles_ggn.sql`
 
 > When prompted to enable RLS, confirm — the migrations set up the correct owner-based policies automatically.
 
@@ -271,13 +285,44 @@ npm run dev
 
 ---
 
-## Setting Up Farm Location (for Map & Weather)
+## Setting Up Farm Profile (Settings)
 
-Go to **Settings** and enter your farm's latitude and longitude. You can find coordinates by right-clicking any location on [openstreetmap.org](https://www.openstreetmap.org).
+Go to **Settings** to configure your farm details:
 
-Example for Belgrade, Serbia: `lat: 44.8176`, `lng: 20.4569`
+- **Farm name** — used across the app and on printed barcode labels
+- **Farm registration number** — optional identifier
+- **GGN (GlobalG.A.P. Number)** — printed on barcode labels when set
+- **Origin (country)** — printed on barcode labels (e.g. "Serbia")
+- **Latitude / Longitude** — used for the Farm Map and Weather Forecast on the Dashboard. Find coordinates by right-clicking any location on [openstreetmap.org](https://www.openstreetmap.org).
 
-Once saved, the **Dashboard** (Business plan) will show the Farm Map with a weather popup on the marker and the 5-day forecast below it.
+Under **Account**, you can update your first and last name.
+
+Example coordinates for Belgrade, Serbia: `lat: 44.8176`, `lng: 20.4569`
+
+---
+
+## Barcode Workflow
+
+### Creating barcodes in advance
+
+The Generate Barcode dialog requires all fields (employee, culture, culture type, packaging, plot) and includes a **date picker** that defaults to today. Set a future date to pre-create barcodes before harvest day.
+
+### Weighing barcodes
+
+Open the **Reader** tab. Scan or type a barcode value and press Enter — the matching row is highlighted. Use the inline Bruto input or connect a serial scale to read weight directly. Neto is calculated automatically (Bruto − Tara from the packaging record).
+
+### Storno logic
+
+When cancelling a barcode:
+
+| Barcode state | What happens |
+|---|---|
+| **Not weighed** (Measured = No) | `is_storno = true` only — no side effects |
+| **Weighed** (Measured = Yes) | `is_storno = true`, `bruto` and `neto` set to null, and the saved Work Evaluation for that employee on that date is recalculated automatically |
+
+This keeps Work Evaluation totals and Profit & Loss reports accurate without manual correction. A confirmation dialog always describes what will happen before committing.
+
+Storno is available from both tabs (individual Ban button or checkbox bulk selection).
 
 ---
 
