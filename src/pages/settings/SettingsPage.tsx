@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Settings, MapPin } from 'lucide-react'
+import { Settings, MapPin, User } from 'lucide-react'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,31 +15,59 @@ import { useSubscription } from '@/context/SubscriptionContext'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
 
-const schema = z.object({
+const farmSchema = z.object({
   farm_name: z.string().min(2, 'Farm name is required'),
   farm_no: z.string().optional(),
+  ggn: z.string().optional(),
+  origin: z.string().optional(),
   farm_lat: z.coerce.number().min(-90).max(90).optional().nullable(),
   farm_lng: z.coerce.number().min(-180).max(180).optional().nullable(),
 })
-type FormData = z.infer<typeof schema>
+type FarmFormData = z.infer<typeof farmSchema>
+
+const accountSchema = z.object({
+  first_name: z.string().optional(),
+  last_name: z.string().optional(),
+})
+type AccountFormData = z.infer<typeof accountSchema>
 
 export default function SettingsPage() {
   const { profile, isLoading, updateProfile } = useProfile()
   const { subscription } = useSubscription()
   const { user } = useAuth()
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting, isDirty } } = useForm<FormData>({
-    resolver: zodResolver(schema) as never,
-  })
+  const farmForm = useForm<FarmFormData>({ resolver: zodResolver(farmSchema) as never })
+  const accountForm = useForm<AccountFormData>({ resolver: zodResolver(accountSchema) as never })
 
   useEffect(() => {
-    if (profile) reset({ farm_name: profile.farm_name, farm_no: profile.farm_no ?? '', farm_lat: profile.farm_lat, farm_lng: profile.farm_lng })
-  }, [profile, reset])
+    if (!profile) return
+    farmForm.reset({
+      farm_name: profile.farm_name,
+      farm_no: profile.farm_no ?? '',
+      ggn: profile.ggn ?? '',
+      origin: profile.origin ?? '',
+      farm_lat: profile.farm_lat,
+      farm_lng: profile.farm_lng,
+    })
+    accountForm.reset({
+      first_name: profile.first_name ?? '',
+      last_name: profile.last_name ?? '',
+    })
+  }, [profile]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const onSubmit = async (data: FormData) => {
+  const onFarmSubmit = async (data: FarmFormData) => {
     try {
       await updateProfile.mutateAsync(data)
-      toast({ title: 'Settings saved' })
+      toast({ title: 'Farm profile saved' })
+    } catch {
+      toast({ title: 'Failed to save', variant: 'destructive' })
+    }
+  }
+
+  const onAccountSubmit = async (data: AccountFormData) => {
+    try {
+      await updateProfile.mutateAsync(data)
+      toast({ title: 'Account saved' })
     } catch {
       toast({ title: 'Failed to save', variant: 'destructive' })
     }
@@ -57,6 +85,7 @@ export default function SettingsPage() {
       <PageHeader title="Settings" description="Manage your farm profile and billing" />
 
       <div className="space-y-6">
+        {/* Farm Profile */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -65,16 +94,24 @@ export default function SettingsPage() {
             <CardDescription>Your farm details used across the app</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={farmForm.handleSubmit(onFarmSubmit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2 space-y-1.5">
                   <Label>Farm name *</Label>
-                  <Input {...register('farm_name')} placeholder="Green Valley Farm" disabled={isLoading} />
-                  {errors.farm_name && <p className="text-xs text-destructive">{errors.farm_name.message}</p>}
+                  <Input {...farmForm.register('farm_name')} placeholder="Green Valley Farm" disabled={isLoading} />
+                  {farmForm.formState.errors.farm_name && <p className="text-xs text-destructive">{farmForm.formState.errors.farm_name.message}</p>}
                 </div>
                 <div className="space-y-1.5">
                   <Label>Farm registration number</Label>
-                  <Input {...register('farm_no')} placeholder="e.g. 12345678" disabled={isLoading} />
+                  <Input {...farmForm.register('farm_no')} placeholder="e.g. 12345678" disabled={isLoading} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>GGN (GlobalG.A.P. Number)</Label>
+                  <Input {...farmForm.register('ggn')} placeholder="e.g. 4049928500015" disabled={isLoading} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Origin (country)</Label>
+                  <Input {...farmForm.register('origin')} placeholder="e.g. Serbia" disabled={isLoading} />
                 </div>
               </div>
 
@@ -87,13 +124,13 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label>Latitude</Label>
-                    <Input {...register('farm_lat')} type="number" step="0.000001" placeholder="e.g. 44.786" />
-                    {errors.farm_lat && <p className="text-xs text-destructive">{errors.farm_lat.message}</p>}
+                    <Input {...farmForm.register('farm_lat')} type="number" step="0.000001" placeholder="e.g. 44.786" />
+                    {farmForm.formState.errors.farm_lat && <p className="text-xs text-destructive">{farmForm.formState.errors.farm_lat.message}</p>}
                   </div>
                   <div className="space-y-1.5">
                     <Label>Longitude</Label>
-                    <Input {...register('farm_lng')} type="number" step="0.000001" placeholder="e.g. 20.448" />
-                    {errors.farm_lng && <p className="text-xs text-destructive">{errors.farm_lng.message}</p>}
+                    <Input {...farmForm.register('farm_lng')} type="number" step="0.000001" placeholder="e.g. 20.448" />
+                    {farmForm.formState.errors.farm_lng && <p className="text-xs text-destructive">{farmForm.formState.errors.farm_lng.message}</p>}
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
@@ -101,34 +138,55 @@ export default function SettingsPage() {
                 </p>
               </div>
 
-              <Button type="submit" className="bg-pomona-green hover:bg-pomona-green/90" disabled={isSubmitting || !isDirty}>
-                {isSubmitting ? 'Saving…' : 'Save changes'}
+              <Button type="submit" className="bg-pomona-green hover:bg-pomona-green/90" disabled={farmForm.formState.isSubmitting || !farmForm.formState.isDirty}>
+                {farmForm.formState.isSubmitting ? 'Saving…' : 'Save changes'}
               </Button>
             </form>
           </CardContent>
         </Card>
 
+        {/* Account */}
         <Card>
           <CardHeader>
-            <CardTitle>Account</CardTitle>
-            <CardDescription>Your account information</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5 text-pomona-green" /> Account
+            </CardTitle>
+            <CardDescription>Your personal information and billing</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between py-2 border-b">
-              <div>
-                <p className="text-sm font-medium">Email</p>
-                <p className="text-sm text-muted-foreground">{user?.email}</p>
+            <form onSubmit={accountForm.handleSubmit(onAccountSubmit)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>First name</Label>
+                  <Input {...accountForm.register('first_name')} placeholder="Jane" disabled={isLoading} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Last name</Label>
+                  <Input {...accountForm.register('last_name')} placeholder="Smith" disabled={isLoading} />
+                </div>
               </div>
-            </div>
-            {subscription?.stripe_customer_id && (
+              <Button type="submit" className="bg-pomona-green hover:bg-pomona-green/90" disabled={accountForm.formState.isSubmitting || !accountForm.formState.isDirty}>
+                {accountForm.formState.isSubmitting ? 'Saving…' : 'Save changes'}
+              </Button>
+            </form>
+
+            <div className="border-t pt-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium">Billing</p>
-                  <p className="text-sm text-muted-foreground capitalize">{subscription.tier} plan · {subscription.status}</p>
+                  <p className="text-sm font-medium">Email</p>
+                  <p className="text-sm text-muted-foreground">{user?.email}</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleManageBilling}>Manage billing</Button>
               </div>
-            )}
+              {subscription?.stripe_customer_id && (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Billing</p>
+                    <p className="text-sm text-muted-foreground capitalize">{subscription.tier} plan · {subscription.status}</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleManageBilling}>Manage billing</Button>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

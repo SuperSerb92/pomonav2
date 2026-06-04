@@ -15,6 +15,8 @@ interface LabelData {
   culture: string
   employeeName: string
   farmName: string
+  ggn: string
+  origin: string
 }
 
 interface Props {
@@ -82,7 +84,7 @@ export function BarcodePrintModal({ barcode, profile, onClose, onCreateCopies }:
         <div style="width:4.25in;height:2.00in;box-sizing:border-box;display:flex;flex-direction:column;border:1.5px solid #222;background:#fff;overflow:hidden;${!isLast ? 'page-break-after:always' : ''}">
           <div style="background:#C4B5FD;color:#1C1B2A;padding:5px 10px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
             <span style="font-weight:700;font-size:10pt;letter-spacing:0.5px">${esc(farmName)}</span>
-            <span style="font-size:7.5pt;opacity:0.9">Origin: Serbia</span>
+            ${origin ? `<span style="font-size:7.5pt;opacity:0.9">Origin: ${esc(origin)}</span>` : ''}
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:6px 10px 4px;flex-shrink:0">
             <div style="padding-right:8px">
@@ -97,9 +99,15 @@ export function BarcodePrintModal({ barcode, profile, onClose, onCreateCopies }:
               <div style="font-size:6pt;text-transform:uppercase;letter-spacing:0.4px;color:#888;margin-bottom:1px">Lot code</div>
               <div style="font-size:8.5pt;font-weight:600;color:#111">${esc(lotCode)}</div>
             </div>
-            <div style="grid-column:1/-1;margin-top:4px">
-              <div style="font-size:6pt;text-transform:uppercase;letter-spacing:0.4px;color:#888;margin-bottom:1px">Worker</div>
-              <div style="font-size:8.5pt;font-weight:600;color:#111">${esc(employeeName)}</div>
+            <div style="grid-column:1/-1;margin-top:4px;display:flex;gap:16px">
+              <div>
+                <div style="font-size:6pt;text-transform:uppercase;letter-spacing:0.4px;color:#888;margin-bottom:1px">Worker</div>
+                <div style="font-size:8.5pt;font-weight:600;color:#111">${esc(employeeName)}</div>
+              </div>
+              ${ggn ? `<div>
+                <div style="font-size:6pt;text-transform:uppercase;letter-spacing:0.4px;color:#888;margin-bottom:1px">GGN</div>
+                <div style="font-size:8.5pt;font-weight:600;color:#111">${esc(ggn)}</div>
+              </div>` : ''}
             </div>
           </div>
           <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:0 10px 4px">
@@ -140,8 +148,8 @@ export function BarcodePrintModal({ barcode, profile, onClose, onCreateCopies }:
           document.body.removeChild(iframe)
         }, { once: true })
       }
-    } catch (e: any) {
-      toast({ title: 'Print failed', description: e.message, variant: 'destructive' })
+    } catch (e: unknown) {
+      toast({ title: 'Print failed', description: e instanceof Error ? e.message : String(e), variant: 'destructive' })
     } finally {
       setIsPrinting(false)
     }
@@ -151,15 +159,17 @@ export function BarcodePrintModal({ barcode, profile, onClose, onCreateCopies }:
 
   const date = new Date(barcode.created_at)
   const lotCode = `${String(date.getDate()).padStart(2, '0')}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getFullYear()).slice(-2)}`
-  const emp = barcode.employee as any
+  const emp = barcode.employee
   const employeeName = emp
     ? `${emp.name}${emp.middle_name ? ' ' + emp.middle_name : ''} ${emp.surname}`.replace(/\s+/g, ' ').trim()
     : '—'
-  const variety = (barcode.culture_type as any)?.culture_type_name ?? '—'
-  const culture = (barcode.culture as any)?.culture_name ?? '—'
+  const variety = barcode.culture_type?.culture_type_name ?? '—'
+  const culture = barcode.culture?.culture_name ?? '—'
   const farmName = profile?.farm_name ?? '—'
+  const ggn = profile?.ggn ?? ''
+  const origin = profile?.origin ?? ''
 
-  const labelData: LabelData = { barcodeValue: barcode.barcode_value, lotCode, variety, culture, employeeName, farmName }
+  const labelData: LabelData = { barcodeValue: barcode.barcode_value, lotCode, variety, culture, employeeName, farmName, ggn, origin }
 
   return (
     <Dialog open={!!barcode} onOpenChange={onClose}>
@@ -215,7 +225,7 @@ export function BarcodePrintModal({ barcode, profile, onClose, onCreateCopies }:
   )
 }
 
-function LabelCard({ lotCode, variety, culture, employeeName, farmName }: LabelData) {
+function LabelCard({ lotCode, variety, culture, employeeName, farmName, ggn, origin }: LabelData) {
   return (
     <div style={{
       fontFamily: 'Arial, Helvetica, sans-serif',
@@ -239,7 +249,7 @@ function LabelCard({ lotCode, variety, culture, employeeName, farmName }: LabelD
         flexShrink: 0,
       }}>
         <span style={{ fontWeight: 700, fontSize: '10pt', letterSpacing: '0.5px' }}>{farmName}</span>
-        <span style={{ fontSize: '7.5pt', opacity: 0.9 }}>Origin: Serbia</span>
+        {origin && <span style={{ fontSize: '7.5pt', opacity: 0.9 }}>Origin: {origin}</span>}
       </div>
 
       <div style={{
@@ -259,9 +269,17 @@ function LabelCard({ lotCode, variety, culture, employeeName, farmName }: LabelD
             <div style={{ fontSize: '8.5pt', fontWeight: 600, color: '#111' }}>{value}</div>
           </div>
         ))}
-        <div style={{ gridColumn: '1 / -1', marginTop: '4px' }}>
-          <div style={{ fontSize: '6pt', textTransform: 'uppercase', letterSpacing: '0.4px', color: '#888', marginBottom: '1px' }}>Worker</div>
-          <div style={{ fontSize: '8.5pt', fontWeight: 600, color: '#111' }}>{employeeName}</div>
+        <div style={{ gridColumn: '1 / -1', marginTop: '4px', display: 'flex', gap: '16px' }}>
+          <div>
+            <div style={{ fontSize: '6pt', textTransform: 'uppercase', letterSpacing: '0.4px', color: '#888', marginBottom: '1px' }}>Worker</div>
+            <div style={{ fontSize: '8.5pt', fontWeight: 600, color: '#111' }}>{employeeName}</div>
+          </div>
+          {ggn && (
+            <div>
+              <div style={{ fontSize: '6pt', textTransform: 'uppercase', letterSpacing: '0.4px', color: '#888', marginBottom: '1px' }}>GGN</div>
+              <div style={{ fontSize: '8.5pt', fontWeight: 600, color: '#111' }}>{ggn}</div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { ScanLine, Save, Printer, Scale, Plug, PlugZap, Loader2 } from 'lucide-react'
+import { ScanLine, Save, Printer, Scale, Plug, PlugZap, Loader2, Search, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,10 @@ export function BarcodeReaderTab() {
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const [pendingBruto, setPendingBruto] = useState<Record<string, string>>({})
   const [printTarget, setPrintTarget] = useState<Barcode | null>(null)
+  const [filterEmployee, setFilterEmployee] = useState('')
+  const [filterDate, setFilterDate] = useState('')
+  const [filterCulture, setFilterCulture] = useState('')
+  const [filterMeasured, setFilterMeasured] = useState<'all' | 'yes' | 'no'>('all')
 
   const fourDaysAgo = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
   const key = ['barcodes-reader', user?.id]
@@ -107,6 +111,31 @@ export function BarcodeReaderTab() {
     updateWeight.mutate({ id: barcode.id, bruto, tara })
   }
 
+  const hasFilters = filterEmployee !== '' || filterDate !== '' || filterCulture !== '' || filterMeasured !== 'all'
+
+  const filteredBarcodes = barcodes.filter((b) => {
+    if (filterEmployee) {
+      const emp = b.employee
+      const name = emp ? `${emp.surname} ${emp.name}`.toLowerCase() : ''
+      if (!name.includes(filterEmployee.toLowerCase())) return false
+    }
+    if (filterDate) {
+      const bDate = new Date(b.created_at).toLocaleDateString('en-CA')
+      if (bDate !== filterDate) return false
+    }
+    if (filterCulture) {
+      const cn = b.culture?.culture_name?.toLowerCase() ?? ''
+      const ctn = b.culture_type?.culture_type_name?.toLowerCase() ?? ''
+      if (!cn.includes(filterCulture.toLowerCase()) && !ctn.includes(filterCulture.toLowerCase())) return false
+    }
+    if (filterMeasured !== 'all') {
+      const m = b.bruto != null && b.bruto > 0
+      if (filterMeasured === 'yes' && !m) return false
+      if (filterMeasured === 'no' && m) return false
+    }
+    return true
+  })
+
   if (isLoading) return <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p>
 
   return (
@@ -125,6 +154,47 @@ export function BarcodeReaderTab() {
           className="max-w-sm"
         />
         <p className="text-xs text-muted-foreground">Showing barcodes from the last 4 days</p>
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Input placeholder="Employee…" value={filterEmployee} onChange={(e) => setFilterEmployee(e.target.value)} className="pl-8 h-8 w-36 text-sm" />
+        </div>
+        <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="h-8 w-40 text-sm" />
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Input placeholder="Culture…" value={filterCulture} onChange={(e) => setFilterCulture(e.target.value)} className="pl-8 h-8 w-36 text-sm" />
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-muted-foreground pr-1">Measured:</span>
+          {(['all', 'yes', 'no'] as const).map((opt) => (
+            <button
+              key={opt}
+              onClick={() => setFilterMeasured(opt)}
+              className={cn(
+                'px-2.5 py-1 text-xs rounded border transition-colors',
+                filterMeasured === opt
+                  ? 'bg-pomona-green text-white border-pomona-green'
+                  : 'border-border bg-background hover:bg-muted'
+              )}
+            >
+              {opt === 'all' ? 'All' : opt === 'yes' ? 'Yes' : 'No'}
+            </button>
+          ))}
+        </div>
+        {hasFilters && (
+          <>
+            <button
+              onClick={() => { setFilterEmployee(''); setFilterDate(''); setFilterCulture(''); setFilterMeasured('all') }}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />Clear
+            </button>
+            <span className="text-xs text-muted-foreground">{filteredBarcodes.length} of {barcodes.length}</span>
+          </>
+        )}
       </div>
 
       {/* Scale connection bar */}
@@ -162,6 +232,8 @@ export function BarcodeReaderTab() {
 
       {barcodes.length === 0 ? (
         <p className="text-sm text-muted-foreground py-6 text-center">No active barcodes in the last 4 days.</p>
+      ) : filteredBarcodes.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-6 text-center">No barcodes match the current filters.</p>
       ) : (
         <div className="rounded-lg border overflow-auto">
           <table className="w-full text-sm">
@@ -180,7 +252,7 @@ export function BarcodeReaderTab() {
               </tr>
             </thead>
             <tbody>
-              {barcodes.map((b) => {
+              {filteredBarcodes.map((b) => {
                 const tara = (b.packaging as any)?.tara ?? b.tara ?? 0
                 const pendingVal = pendingBruto[b.id]
                 const displayBruto = pendingVal !== undefined ? parseFloat(pendingVal) || 0 : b.bruto ?? 0

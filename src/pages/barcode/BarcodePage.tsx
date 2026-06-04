@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { MoreHorizontal, Ban, QrCode, Printer } from 'lucide-react'
+import { MoreHorizontal, Ban, QrCode, Printer, CalendarDays } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageContainer } from '@/components/layout/PageContainer'
@@ -11,6 +11,7 @@ import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -32,11 +33,12 @@ import { useProfile } from '@/hooks/useProfile'
 import type { Barcode } from '@/types/app.types'
 
 const schema = z.object({
-  employee_id: z.string().optional().nullable(),
-  culture_id: z.string().optional().nullable(),
-  culture_type_id: z.string().optional().nullable(),
-  packaging_id: z.string().optional().nullable(),
-  plot_id: z.string().optional().nullable(),
+  date: z.string().min(1, 'Required'),
+  employee_id: z.string().min(1, 'Required'),
+  culture_id: z.string().min(1, 'Required'),
+  culture_type_id: z.string().min(1, 'Required'),
+  packaging_id: z.string().min(1, 'Required'),
+  plot_id: z.string().min(1, 'Required'),
   tara: z.coerce.number().optional().nullable(),
   neto: z.coerce.number().optional().nullable(),
   bruto: z.coerce.number().optional().nullable(),
@@ -79,10 +81,12 @@ export default function BarcodePage() {
 
   const create = useMutation({
     mutationFn: async (input: FormData) => {
+      const { date, ...rest } = input
       const { error } = await supabase.from('barcodes').insert({
-        ...input,
+        ...rest,
         user_id: user!.id,
         barcode_value: generateBarcodeValue(user!.id),
+        created_at: new Date(date).toISOString(),
       })
       if (error) throw error
     },
@@ -108,7 +112,7 @@ export default function BarcodePage() {
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   })
 
-  const { handleSubmit, setValue, watch, reset } = useForm<FormData>({ resolver: zodResolver(schema) as never })
+  const { handleSubmit, register, setValue, watch, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) as never })
 
   const onSubmit = async (data: FormData) => {
     await create.mutateAsync(data)
@@ -116,7 +120,8 @@ export default function BarcodePage() {
     reset({})
   }
 
-  const openAdd = () => { reset({}); setDialogOpen(true) }
+  const today = new Date().toISOString().split('T')[0]
+  const openAdd = () => { reset({ date: today }); setDialogOpen(true) }
   const selectedCultureId = watch('culture_id')
   const filteredTypes = cultureTypes.filter((ct) => ct.culture_id === selectedCultureId)
 
@@ -202,39 +207,52 @@ export default function BarcodePage() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Employee</Label>
-                <Select value={watch('employee_id') ?? ''} onValueChange={(v) => setValue('employee_id', v || null)}>
-                  <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                <Label>Date *</Label>
+                <div className="relative">
+                  <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input type="date" {...register('date')} className="pl-9" />
+                </div>
+                {errors.date && <p className="text-xs text-destructive">{errors.date.message}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Employee *</Label>
+                <Select value={watch('employee_id') ?? ''} onValueChange={(v) => setValue('employee_id', v, { shouldValidate: true })}>
+                  <SelectTrigger className={errors.employee_id ? 'border-destructive' : ''}><SelectValue placeholder="Select…" /></SelectTrigger>
                   <SelectContent>{employees.map((e) => <SelectItem key={e.id} value={e.id}>{e.surname} {e.name}</SelectItem>)}</SelectContent>
                 </Select>
+                {errors.employee_id && <p className="text-xs text-destructive">{errors.employee_id.message}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label>Culture</Label>
-                <Select value={watch('culture_id') ?? ''} onValueChange={(v) => { setValue('culture_id', v || null); setValue('culture_type_id', null) }}>
-                  <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                <Label>Culture *</Label>
+                <Select value={watch('culture_id') ?? ''} onValueChange={(v) => { setValue('culture_id', v, { shouldValidate: true }); setValue('culture_type_id', '', { shouldValidate: false }) }}>
+                  <SelectTrigger className={errors.culture_id ? 'border-destructive' : ''}><SelectValue placeholder="Select…" /></SelectTrigger>
                   <SelectContent>{cultures.map((c) => <SelectItem key={c.id} value={c.id}>{c.culture_name}</SelectItem>)}</SelectContent>
                 </Select>
+                {errors.culture_id && <p className="text-xs text-destructive">{errors.culture_id.message}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label>Culture type</Label>
-                <Select value={watch('culture_type_id') ?? ''} onValueChange={(v) => setValue('culture_type_id', v || null)}>
-                  <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                <Label>Culture type *</Label>
+                <Select value={watch('culture_type_id') ?? ''} onValueChange={(v) => setValue('culture_type_id', v, { shouldValidate: true })}>
+                  <SelectTrigger className={errors.culture_type_id ? 'border-destructive' : ''}><SelectValue placeholder="Select…" /></SelectTrigger>
                   <SelectContent>{filteredTypes.map((ct) => <SelectItem key={ct.id} value={ct.id}>{ct.culture_type_name}</SelectItem>)}</SelectContent>
                 </Select>
+                {errors.culture_type_id && <p className="text-xs text-destructive">{errors.culture_type_id.message}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label>Packaging</Label>
-                <Select value={watch('packaging_id') ?? ''} onValueChange={(v) => setValue('packaging_id', v || null)}>
-                  <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                <Label>Packaging *</Label>
+                <Select value={watch('packaging_id') ?? ''} onValueChange={(v) => setValue('packaging_id', v, { shouldValidate: true })}>
+                  <SelectTrigger className={errors.packaging_id ? 'border-destructive' : ''}><SelectValue placeholder="Select…" /></SelectTrigger>
                   <SelectContent>{packaging.map((p) => <SelectItem key={p.id} value={p.id}>{p.packaging_type}</SelectItem>)}</SelectContent>
                 </Select>
+                {errors.packaging_id && <p className="text-xs text-destructive">{errors.packaging_id.message}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label>Plot</Label>
-                <Select value={watch('plot_id') ?? ''} onValueChange={(v) => setValue('plot_id', v || null)}>
-                  <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                <Label>Plot *</Label>
+                <Select value={watch('plot_id') ?? ''} onValueChange={(v) => setValue('plot_id', v, { shouldValidate: true })}>
+                  <SelectTrigger className={errors.plot_id ? 'border-destructive' : ''}><SelectValue placeholder="Select…" /></SelectTrigger>
                   <SelectContent>{plots.map((p) => <SelectItem key={p.id} value={p.id}>{p.plot_name}</SelectItem>)}</SelectContent>
                 </Select>
+                {errors.plot_id && <p className="text-xs text-destructive">{errors.plot_id.message}</p>}
               </div>
             </div>
             <DialogFooter>

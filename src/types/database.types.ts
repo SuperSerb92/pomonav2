@@ -15,6 +15,8 @@ export type Database = {
           farm_no: string | null
           farm_lat: number | null
           farm_lng: number | null
+          ggn: string | null
+          origin: string | null
           created_at: string
           updated_at: string
         }
@@ -26,6 +28,8 @@ export type Database = {
           farm_no?: string | null
           farm_lat?: number | null
           farm_lng?: number | null
+          ggn?: string | null
+          origin?: string | null
         }
         Update: {
           first_name?: string | null
@@ -34,6 +38,8 @@ export type Database = {
           farm_no?: string | null
           farm_lat?: number | null
           farm_lng?: number | null
+          ggn?: string | null
+          origin?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -216,6 +222,7 @@ export type Database = {
           packaging_id?: string | null
           plot_id?: string | null
           barcode_value: string
+          created_at?: string
           tara?: number | null
           neto?: number | null
           bruto?: number | null

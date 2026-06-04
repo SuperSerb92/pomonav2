@@ -10,6 +10,8 @@ export interface Profile {
   farm_no: string | null
   farm_lat: number | null
   farm_lng: number | null
+  ggn: string | null
+  origin: string | null
   created_at: string
   updated_at: string
 }
