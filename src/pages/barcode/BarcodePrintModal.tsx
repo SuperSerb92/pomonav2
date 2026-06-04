@@ -3,8 +3,6 @@ import JsBarcode from 'jsbarcode'
 import { Printer } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { toast } from '@/hooks/useToast'
 import type { Barcode, Profile } from '@/types/app.types'
 
@@ -20,10 +18,9 @@ interface LabelData {
 }
 
 interface Props {
-  barcode: Barcode | null
+  barcodes: Barcode[] | null
   profile: Profile | null | undefined
   onClose: () => void
-  onCreateCopies: (copies: number) => Promise<string[]>
 }
 
 function esc(s: string) {
@@ -47,15 +44,16 @@ function makeSVGHtml(value: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" style="display:block">${svgEl.innerHTML}</svg>`
 }
 
-export function BarcodePrintModal({ barcode, profile, onClose, onCreateCopies }: Props) {
-  const [copies, setCopies] = useState(1)
+export function BarcodePrintModal({ barcodes, profile, onClose }: Props) {
   const [isPrinting, setIsPrinting] = useState(false)
 
+  const first = barcodes?.[0] ?? null
+
   useEffect(() => {
-    if (!barcode) return
+    if (!first) return
     const id = setTimeout(() => {
       document.querySelectorAll<SVGSVGElement>('.pomona-barcode-svg').forEach((el) => {
-        JsBarcode(el, barcode.barcode_value, {
+        JsBarcode(el, first.barcode_value, {
           format: 'CODE128',
           width: 1.8,
           height: 55,
@@ -68,19 +66,27 @@ export function BarcodePrintModal({ barcode, profile, onClose, onCreateCopies }:
       })
     }, 50)
     return () => clearTimeout(id)
-  }, [barcode])
+  }, [first])
 
   async function handlePrint() {
-    if (!barcode || isPrinting) return
+    if (!barcodes?.length || isPrinting) return
     setIsPrinting(true)
     try {
-      // copies = 1 → reprint the existing barcode, no new record created
-      // copies > 1 → create N new unique barcodes (one per crate)
-      const barcodeValues = copies === 1
-        ? [barcode.barcode_value]
-        : await onCreateCopies(copies)
+      const farmName = profile?.farm_name ?? '—'
+      const ggn = profile?.ggn ?? ''
+      const origin = profile?.origin ?? ''
 
-      const makePageHtml = (value: string, isLast: boolean) => `
+      const makePageHtml = (b: Barcode, isLast: boolean) => {
+        const date = new Date(b.created_at)
+        const lotCode = `${String(date.getDate()).padStart(2, '0')}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getFullYear()).slice(-2)}`
+        const emp = b.employee
+        const employeeName = emp
+          ? `${emp.name}${emp.middle_name ? ' ' + emp.middle_name : ''} ${emp.surname}`.replace(/\s+/g, ' ').trim()
+          : '—'
+        const variety = b.culture_type?.culture_type_name ?? '—'
+        const culture = b.culture?.culture_name ?? '—'
+
+        return `
         <div style="width:4.25in;height:2.00in;box-sizing:border-box;display:flex;flex-direction:column;border:1.5px solid #222;background:#fff;overflow:hidden;${!isLast ? 'page-break-after:always' : ''}">
           <div style="background:#C4B5FD;color:#1C1B2A;padding:5px 10px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
             <span style="font-weight:700;font-size:10pt;letter-spacing:0.5px">${esc(farmName)}</span>
@@ -111,13 +117,12 @@ export function BarcodePrintModal({ barcode, profile, onClose, onCreateCopies }:
             </div>
           </div>
           <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:0 10px 4px">
-            ${makeSVGHtml(value)}
+            ${makeSVGHtml(b.barcode_value)}
           </div>
         </div>`
+      }
 
-      const pages = barcodeValues
-        .map((val, i) => makePageHtml(val, i === barcodeValues.length - 1))
-        .join('')
+      const pages = barcodes.map((b, i) => makePageHtml(b, i === barcodes.length - 1)).join('')
 
       const html = `<!DOCTYPE html>
 <html>
@@ -135,8 +140,6 @@ export function BarcodePrintModal({ barcode, profile, onClose, onCreateCopies }:
 <body>${pages}</body>
 </html>`
 
-      // Use srcdoc instead of a blob URL so frame-src CSP on production (Cloudflare HTTPS)
-      // never blocks the iframe — srcdoc has no URL and is not subject to frame-src.
       const iframe = document.createElement('iframe')
       iframe.setAttribute('aria-hidden', 'true')
       iframe.style.cssText = 'position:fixed;left:-9999px;top:0;border:0;width:4.25in;height:2.00in'
@@ -155,56 +158,43 @@ export function BarcodePrintModal({ barcode, profile, onClose, onCreateCopies }:
     }
   }
 
-  if (!barcode) return null
+  if (!first) return null
 
-  const date = new Date(barcode.created_at)
+  const date = new Date(first.created_at)
   const lotCode = `${String(date.getDate()).padStart(2, '0')}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getFullYear()).slice(-2)}`
-  const emp = barcode.employee
+  const emp = first.employee
   const employeeName = emp
     ? `${emp.name}${emp.middle_name ? ' ' + emp.middle_name : ''} ${emp.surname}`.replace(/\s+/g, ' ').trim()
     : '—'
-  const variety = barcode.culture_type?.culture_type_name ?? '—'
-  const culture = barcode.culture?.culture_name ?? '—'
+  const variety = first.culture_type?.culture_type_name ?? '—'
+  const culture = first.culture?.culture_name ?? '—'
   const farmName = profile?.farm_name ?? '—'
   const ggn = profile?.ggn ?? ''
   const origin = profile?.origin ?? ''
 
-  const labelData: LabelData = { barcodeValue: barcode.barcode_value, lotCode, variety, culture, employeeName, farmName, ggn, origin }
+  const previewData: LabelData = { barcodeValue: first.barcode_value, lotCode, variety, culture, employeeName, farmName, ggn, origin }
+  const count = barcodes?.length ?? 1
 
   return (
-    <Dialog open={!!barcode} onOpenChange={onClose}>
+    <Dialog open={!!barcodes?.length} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[660px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Printer className="h-4 w-4" />
-            Print labels
+            Print label{count > 1 ? 's' : ''}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Label htmlFor="copies" className="shrink-0">Number of copies</Label>
-            <Input
-              id="copies"
-              type="number"
-              min="1"
-              max="99"
-              value={copies}
-              onChange={(e) => setCopies(Math.max(1, Math.min(99, parseInt(e.target.value) || 1)))}
-              className="w-20"
-            />
-            <span className="text-xs text-muted-foreground">
-              {copies === 1 ? 'Reprints this label' : `${copies} new barcodes will be created — each crate gets its own unique barcode`}
-            </span>
-          </div>
-
-          {/* Screen preview — shows label layout; each printed copy gets a unique barcode */}
+          {/* Screen preview */}
           <div className="border rounded-lg overflow-hidden bg-white">
             <p className="text-[10px] text-muted-foreground px-3 py-1.5 bg-muted/40 border-b">
-              {copies === 1 ? 'Label preview · reprinting existing barcode' : `Label preview · ${copies} labels, each with a unique barcode`}
+              {count === 1
+                ? 'Label preview'
+                : `Label preview · showing 1 of ${count} — all ${count} labels will be printed`}
             </p>
             <div className="p-4 flex justify-center">
-              <LabelCard {...labelData} />
+              <LabelCard {...previewData} />
             </div>
           </div>
 
@@ -216,7 +206,7 @@ export function BarcodePrintModal({ barcode, profile, onClose, onCreateCopies }:
               disabled={isPrinting}
             >
               <Printer className="h-4 w-4 mr-2" />
-              {isPrinting ? 'Creating…' : `Print ${copies} ${copies === 1 ? 'label' : 'labels'}`}
+              {isPrinting ? 'Printing…' : `Print ${count === 1 ? 'label' : `${count} labels`}`}
             </Button>
           </div>
         </div>

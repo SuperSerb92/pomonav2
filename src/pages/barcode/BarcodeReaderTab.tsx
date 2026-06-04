@@ -26,7 +26,7 @@ export function BarcodeReaderTab() {
   const [scanValue, setScanValue] = useState('')
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const [pendingBruto, setPendingBruto] = useState<Record<string, string>>({})
-  const [printTarget, setPrintTarget] = useState<Barcode | null>(null)
+  const [printTarget, setPrintTarget] = useState<Barcode[] | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [batchTarget, setBatchTarget] = useState<Barcode[] | null>(null)
   const { stornoTarget, setStornoTarget, storno, stornoMultiple } = useStornoBarcode()
@@ -380,7 +380,7 @@ export function BarcodeReaderTab() {
                           size="sm"
                           variant="ghost"
                           className="h-7 w-7 p-0"
-                          onClick={() => setPrintTarget(b)}
+                          onClick={() => setPrintTarget([b])}
                           title="Print label"
                         >
                           <Printer className="h-3.5 w-3.5" />
@@ -455,26 +455,9 @@ export function BarcodeReaderTab() {
     </Dialog>
 
     <BarcodePrintModal
-      barcode={printTarget}
+      barcodes={printTarget}
       profile={profile}
       onClose={() => setPrintTarget(null)}
-      onCreateCopies={async (copies) => {
-        const records = Array.from({ length: copies }, (_, i) => ({
-          user_id: user!.id,
-          employee_id: printTarget!.employee_id,
-          culture_id: printTarget!.culture_id,
-          culture_type_id: printTarget!.culture_type_id,
-          packaging_id: printTarget!.packaging_id,
-          plot_id: printTarget!.plot_id,
-          tara: printTarget!.tara,
-          barcode_value: `PM-${user!.id.slice(0, 4).toUpperCase()}-${Date.now() + i}`,
-        }))
-        const { data, error } = await supabase.from('barcodes').insert(records).select('barcode_value')
-        if (error) throw error
-        queryClient.invalidateQueries({ queryKey: ['barcodes', user?.id] })
-        queryClient.invalidateQueries({ queryKey: ['barcodes-reader', user?.id] })
-        return (data as { barcode_value: string }[]).map(r => r.barcode_value)
-      }}
     />
     </>
   )

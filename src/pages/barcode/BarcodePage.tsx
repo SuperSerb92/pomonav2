@@ -36,14 +36,12 @@ import type { Barcode } from '@/types/app.types'
 
 const schema = z.object({
   date: z.string().min(1, 'Required'),
+  quantity: z.coerce.number().min(1).max(99),
   employee_id: z.string().min(1, 'Required'),
   culture_id: z.string().min(1, 'Required'),
   culture_type_id: z.string().min(1, 'Required'),
   packaging_id: z.string().min(1, 'Required'),
   plot_id: z.string().min(1, 'Required'),
-  tara: z.coerce.number().optional().nullable(),
-  neto: z.coerce.number().optional().nullable(),
-  bruto: z.coerce.number().optional().nullable(),
 })
 type FormData = z.infer<typeof schema>
 
@@ -61,7 +59,9 @@ export default function BarcodePage() {
   const { plots } = usePlots()
   const { profile } = useProfile()
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [printTarget, setPrintTarget] = useState<Barcode | null>(null)
+  const [dialogStep, setDialogStep] = useState<'form' | 'confirm-print'>('form')
+  const [createdBarcodes, setCreatedBarcodes] = useState<Barcode[] | null>(null)
+  const [printTarget, setPrintTarget] = useState<Barcode[] | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [batchTarget, setBatchTarget] = useState<Barcode[] | null>(null)
   const { stornoTarget, setStornoTarget, storno, stornoMultiple } = useStornoBarcode()
@@ -90,19 +90,40 @@ export default function BarcodePage() {
 
   const create = useMutation({
     mutationFn: async (input: FormData) => {
-      const { date, ...rest } = input
-      const { error } = await supabase.from('barcodes').insert({
+      const { date, quantity, ...rest } = input
+      const createdAt = new Date(date).toISOString()
+      const records = Array.from({ length: quantity }, (_, i) => ({
         ...rest,
         user_id: user!.id,
-        barcode_value: generateBarcodeValue(user!.id),
-        created_at: new Date(date).toISOString(),
-      })
+        barcode_value: generateBarcodeValue(user!.id, i),
+        created_at: createdAt,
+      }))
+      const { data, error } = await supabase
+        .from('barcodes')
+        .insert(records)
+        .select('id, barcode_value, created_at')
       if (error) throw error
+      return { rows: data as { id: string; barcode_value: string; created_at: string }[], input }
     },
-    onSuccess: () => {
+    onSuccess: ({ rows, input }) => {
       queryClient.invalidateQueries({ queryKey: key })
       queryClient.invalidateQueries({ queryKey: ['barcodes-reader', user?.id] })
-      toast({ title: 'Barcode generated' })
+      const emp = employees.find(e => e.id === input.employee_id)
+      const cul = cultures.find(c => c.id === input.culture_id)
+      const culType = cultureTypes.find(ct => ct.id === input.culture_type_id)
+      const pkg = packaging.find(p => p.id === input.packaging_id)
+      const plt = plots.find(p => p.id === input.plot_id)
+      const built: Barcode[] = rows.map(r => ({
+        id: r.id, user_id: user!.id,
+        employee_id: input.employee_id, culture_id: input.culture_id,
+        culture_type_id: input.culture_type_id, packaging_id: input.packaging_id,
+        plot_id: input.plot_id, barcode_value: r.barcode_value, created_at: r.created_at,
+        tara: null, neto: null, bruto: null, print_count: 0,
+        is_storno: false, storno_at: null, storno_reason: null,
+        employee: emp, culture: cul, culture_type: culType, packaging: pkg, plot: plt,
+      }))
+      setCreatedBarcodes(built)
+      setDialogStep('confirm-print')
     },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   })
@@ -111,12 +132,18 @@ const { handleSubmit, register, setValue, watch, reset, formState: { errors } } 
 
   const onSubmit = async (data: FormData) => {
     await create.mutateAsync(data)
+    // dialog stays open — moves to 'confirm-print' step via onSuccess
+  }
+
+  const closeDialog = () => {
     setDialogOpen(false)
+    setDialogStep('form')
+    setCreatedBarcodes(null)
     reset({})
   }
 
   const today = new Date().toISOString().split('T')[0]
-  const openAdd = () => { reset({ date: today }); setDialogOpen(true) }
+  const openAdd = () => { reset({ date: today, quantity: 1 }); setDialogStep('form'); setDialogOpen(true) }
   const selectedCultureId = watch('culture_id')
   const filteredTypes = cultureTypes.filter((ct) => ct.culture_id === selectedCultureId)
 
@@ -169,7 +196,7 @@ const { handleSubmit, register, setValue, watch, reset, formState: { errors } } 
         <DropdownMenu>
           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setPrintTarget(row.original)}>
+            <DropdownMenuItem onClick={() => setPrintTarget([row.original])}>
               <Printer className="mr-2 h-4 w-4" />Print label
             </DropdownMenuItem>
             {!row.original.is_storno && (
@@ -235,92 +262,102 @@ const { handleSubmit, register, setValue, watch, reset, formState: { errors } } 
       </Tabs>
 
       {/* Generate dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog() }}>
         <DialogContent className="sm:max-w-lg">
-          <DialogHeader><DialogTitle>Generate barcode</DialogTitle></DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Date *</Label>
-                <div className="relative">
-                  <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  <Input type="date" {...register('date')} className="pl-9" />
+          {dialogStep === 'form' ? (
+            <>
+              <DialogHeader><DialogTitle>Generate barcodes</DialogTitle></DialogHeader>
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>Date *</Label>
+                    <div className="relative">
+                      <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                      <Input type="date" {...register('date')} className="pl-9" />
+                    </div>
+                    {errors.date && <p className="text-xs text-destructive">{errors.date.message}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Number of barcodes *</Label>
+                    <Input type="number" min="1" max="99" {...register('quantity')} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Employee *</Label>
+                    <Select value={watch('employee_id') ?? ''} onValueChange={(v) => setValue('employee_id', v, { shouldValidate: true })}>
+                      <SelectTrigger className={errors.employee_id ? 'border-destructive' : ''}><SelectValue placeholder="Select…" /></SelectTrigger>
+                      <SelectContent>{employees.map((e) => <SelectItem key={e.id} value={e.id}>{e.surname} {e.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                    {errors.employee_id && <p className="text-xs text-destructive">{errors.employee_id.message}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Culture *</Label>
+                    <Select value={watch('culture_id') ?? ''} onValueChange={(v) => { setValue('culture_id', v, { shouldValidate: true }); setValue('culture_type_id', '', { shouldValidate: false }) }}>
+                      <SelectTrigger className={errors.culture_id ? 'border-destructive' : ''}><SelectValue placeholder="Select…" /></SelectTrigger>
+                      <SelectContent>{cultures.map((c) => <SelectItem key={c.id} value={c.id}>{c.culture_name}</SelectItem>)}</SelectContent>
+                    </Select>
+                    {errors.culture_id && <p className="text-xs text-destructive">{errors.culture_id.message}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Culture type *</Label>
+                    <Select value={watch('culture_type_id') ?? ''} onValueChange={(v) => setValue('culture_type_id', v, { shouldValidate: true })}>
+                      <SelectTrigger className={errors.culture_type_id ? 'border-destructive' : ''}><SelectValue placeholder="Select…" /></SelectTrigger>
+                      <SelectContent>{filteredTypes.map((ct) => <SelectItem key={ct.id} value={ct.id}>{ct.culture_type_name}</SelectItem>)}</SelectContent>
+                    </Select>
+                    {errors.culture_type_id && <p className="text-xs text-destructive">{errors.culture_type_id.message}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Packaging *</Label>
+                    <Select value={watch('packaging_id') ?? ''} onValueChange={(v) => setValue('packaging_id', v, { shouldValidate: true })}>
+                      <SelectTrigger className={errors.packaging_id ? 'border-destructive' : ''}><SelectValue placeholder="Select…" /></SelectTrigger>
+                      <SelectContent>{packaging.map((p) => <SelectItem key={p.id} value={p.id}>{p.packaging_type}</SelectItem>)}</SelectContent>
+                    </Select>
+                    {errors.packaging_id && <p className="text-xs text-destructive">{errors.packaging_id.message}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Plot *</Label>
+                    <Select value={watch('plot_id') ?? ''} onValueChange={(v) => setValue('plot_id', v, { shouldValidate: true })}>
+                      <SelectTrigger className={errors.plot_id ? 'border-destructive' : ''}><SelectValue placeholder="Select…" /></SelectTrigger>
+                      <SelectContent>{plots.map((p) => <SelectItem key={p.id} value={p.id}>{p.plot_name}</SelectItem>)}</SelectContent>
+                    </Select>
+                    {errors.plot_id && <p className="text-xs text-destructive">{errors.plot_id.message}</p>}
+                  </div>
                 </div>
-                {errors.date && <p className="text-xs text-destructive">{errors.date.message}</p>}
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
+                  <Button type="submit" className="bg-pomona-green hover:bg-pomona-green/90" disabled={create.isPending}>
+                    {create.isPending ? 'Generating…' : 'Generate'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </>
+          ) : (
+            <>
+              <DialogHeader><DialogTitle>Barcodes saved</DialogTitle></DialogHeader>
+              <div className="py-2 space-y-1">
+                <p className="text-sm">
+                  <span className="font-semibold">{createdBarcodes?.length}</span> barcode{createdBarcodes?.length !== 1 ? 's' : ''} created successfully.
+                </p>
+                <p className="text-sm text-muted-foreground">Would you like to print the labels now?</p>
               </div>
-              <div className="space-y-1.5">
-                <Label>Employee *</Label>
-                <Select value={watch('employee_id') ?? ''} onValueChange={(v) => setValue('employee_id', v, { shouldValidate: true })}>
-                  <SelectTrigger className={errors.employee_id ? 'border-destructive' : ''}><SelectValue placeholder="Select…" /></SelectTrigger>
-                  <SelectContent>{employees.map((e) => <SelectItem key={e.id} value={e.id}>{e.surname} {e.name}</SelectItem>)}</SelectContent>
-                </Select>
-                {errors.employee_id && <p className="text-xs text-destructive">{errors.employee_id.message}</p>}
-              </div>
-              <div className="space-y-1.5">
-                <Label>Culture *</Label>
-                <Select value={watch('culture_id') ?? ''} onValueChange={(v) => { setValue('culture_id', v, { shouldValidate: true }); setValue('culture_type_id', '', { shouldValidate: false }) }}>
-                  <SelectTrigger className={errors.culture_id ? 'border-destructive' : ''}><SelectValue placeholder="Select…" /></SelectTrigger>
-                  <SelectContent>{cultures.map((c) => <SelectItem key={c.id} value={c.id}>{c.culture_name}</SelectItem>)}</SelectContent>
-                </Select>
-                {errors.culture_id && <p className="text-xs text-destructive">{errors.culture_id.message}</p>}
-              </div>
-              <div className="space-y-1.5">
-                <Label>Culture type *</Label>
-                <Select value={watch('culture_type_id') ?? ''} onValueChange={(v) => setValue('culture_type_id', v, { shouldValidate: true })}>
-                  <SelectTrigger className={errors.culture_type_id ? 'border-destructive' : ''}><SelectValue placeholder="Select…" /></SelectTrigger>
-                  <SelectContent>{filteredTypes.map((ct) => <SelectItem key={ct.id} value={ct.id}>{ct.culture_type_name}</SelectItem>)}</SelectContent>
-                </Select>
-                {errors.culture_type_id && <p className="text-xs text-destructive">{errors.culture_type_id.message}</p>}
-              </div>
-              <div className="space-y-1.5">
-                <Label>Packaging *</Label>
-                <Select value={watch('packaging_id') ?? ''} onValueChange={(v) => setValue('packaging_id', v, { shouldValidate: true })}>
-                  <SelectTrigger className={errors.packaging_id ? 'border-destructive' : ''}><SelectValue placeholder="Select…" /></SelectTrigger>
-                  <SelectContent>{packaging.map((p) => <SelectItem key={p.id} value={p.id}>{p.packaging_type}</SelectItem>)}</SelectContent>
-                </Select>
-                {errors.packaging_id && <p className="text-xs text-destructive">{errors.packaging_id.message}</p>}
-              </div>
-              <div className="space-y-1.5">
-                <Label>Plot *</Label>
-                <Select value={watch('plot_id') ?? ''} onValueChange={(v) => setValue('plot_id', v, { shouldValidate: true })}>
-                  <SelectTrigger className={errors.plot_id ? 'border-destructive' : ''}><SelectValue placeholder="Select…" /></SelectTrigger>
-                  <SelectContent>{plots.map((p) => <SelectItem key={p.id} value={p.id}>{p.plot_name}</SelectItem>)}</SelectContent>
-                </Select>
-                {errors.plot_id && <p className="text-xs text-destructive">{errors.plot_id.message}</p>}
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <Button type="submit" className="bg-pomona-green hover:bg-pomona-green/90" disabled={create.isPending}>
-                Generate barcode
-              </Button>
-            </DialogFooter>
-          </form>
+              <DialogFooter>
+                <Button variant="outline" onClick={closeDialog}>Done</Button>
+                <Button
+                  className="bg-pomona-green hover:bg-pomona-green/90"
+                  onClick={() => { setPrintTarget(createdBarcodes); closeDialog() }}
+                >
+                  <Printer className="h-4 w-4 mr-2" />Print now
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
       <BarcodePrintModal
-    barcode={printTarget}
-    profile={profile}
-    onClose={() => setPrintTarget(null)}
-    onCreateCopies={async (copies) => {
-      const records = Array.from({ length: copies }, (_, i) => ({
-        user_id: user!.id,
-        employee_id: printTarget!.employee_id,
-        culture_id: printTarget!.culture_id,
-        culture_type_id: printTarget!.culture_type_id,
-        packaging_id: printTarget!.packaging_id,
-        plot_id: printTarget!.plot_id,
-        tara: printTarget!.tara,
-        barcode_value: generateBarcodeValue(user!.id, i),
-      }))
-      const { data, error } = await supabase.from('barcodes').insert(records).select('barcode_value')
-      if (error) throw error
-      queryClient.invalidateQueries({ queryKey: key })
-      queryClient.invalidateQueries({ queryKey: ['barcodes-reader', user?.id] })
-      return (data as { barcode_value: string }[]).map(r => r.barcode_value)
-    }}
-  />
+        barcodes={printTarget}
+        profile={profile}
+        onClose={() => setPrintTarget(null)}
+      />
 
       {/* Batch storno confirm dialog */}
       <Dialog open={!!batchTarget} onOpenChange={() => setBatchTarget(null)}>
