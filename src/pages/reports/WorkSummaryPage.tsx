@@ -53,6 +53,10 @@ export default function WorkSummaryPage() {
     enabled: !!user,
   })
 
+  const totNeto  = rows.reduce((s, r) => s + (r.total_neto ?? 0), 0)
+  const totBoxes = rows.reduce((s, r) => s + (r.total_boxes ?? 0), 0)
+  const totPay   = rows.reduce((s, r) => s + (r.total_pay ?? 0), 0)
+
   const chartData = Object.values(
     rows.reduce((acc: Record<string, { name: string; neto: number; pay: number }>, row) => {
       const key = row.employee_full_name
@@ -118,7 +122,19 @@ export default function WorkSummaryPage() {
           </CardContent>
         </Card>
 
-        <DataTable columns={columns} data={rows} isLoading={isLoading} searchColumn="employee_full_name" />
+        <DataTable
+          columns={columns}
+          data={rows}
+          isLoading={isLoading}
+          searchColumn="employee_full_name"
+          footer={rows.length > 0 ? <>
+            <td colSpan={2} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">{rows.length} record{rows.length !== 1 ? 's' : ''}</td>
+            <td className="px-4 py-2.5 text-right text-sm font-semibold">{formatWeight(totNeto)}</td>
+            <td className="px-4 py-2.5 text-right text-sm font-semibold">{totBoxes}</td>
+            <td className="px-4 py-2.5 text-right text-sm font-semibold">{formatCurrency(totPay)}</td>
+            <td />
+          </> : undefined}
+        />
       </div>
     </PageContainer>
   )
