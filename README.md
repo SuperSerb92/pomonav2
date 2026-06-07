@@ -68,11 +68,11 @@ A modern farm management SaaS application — rebuilt from the original Pomona (
 - **Plot Lists** — groupings for organizing plots
 - **Plots** — individual parcels linked to plot lists
 - **Barcode** — three-tab page:
-  - **Generator** — create barcodes with mandatory employee / culture / culture type / packaging / plot assignments, a date picker (defaults to today, supports future dates), and a **quantity field** (1–99) to generate multiple unique barcodes in one go. After generation the dialog asks "Print now?" — yes opens the print modal immediately, no saves and closes. Print later from the table prints only that barcode's label (no new records created). Print labels: CODE128, 4.25"×2" thermal layout with lavender header showing farm name and origin, lot code, variety, worker, GGN. Checkbox selection for bulk storno.
-  - **Reader** — scan barcodes via a hardware scanner, enter Bruto weight manually or read directly from a serial scale via the Web Serial API (9600/8N1, `P` command), Neto auto-calculated (Bruto − Tara); real-time save per row. Filter by employee, date, culture, or measured status. Checkbox selection for bulk operations.
+  - **Generator** — create barcodes with mandatory employee / culture / culture type / packaging / plot assignments, a date picker (defaults to today, supports future dates), and a **quantity field** (1–99) to generate multiple unique barcodes in one go. After generation the dialog asks "Print now?" — yes opens the print modal immediately, no saves and closes. Print later from the table via the ⋯ menu (disabled for cancelled barcodes). Print labels: CODE128, 4.25"×2" thermal layout with lavender header showing farm name and origin, lot code, variety, worker, GGN. Checkbox selection for bulk storno. **Status filter** (All / Active / Cancelled) sits inline next to the search bar.
+  - **Reader** — scan barcodes via a hardware scanner, enter Bruto weight manually (implicit 3-decimal input — type `1234` to get `1.234 kg`, no dot required) or read directly from a serial scale via the Web Serial API (9600/8N1, `P` command), Neto auto-calculated (Bruto − Tara); real-time save per row. Filter by employee, date, culture, or measured status. Date filter fetches from the DB for that specific date regardless of the default 4-day window. Checkbox selection for bulk operations.
   - **Storno** — history of all cancelled barcodes. Storno can be triggered from both the Generator and Reader tabs, individually or in bulk. **Smart storno logic:** if a barcode has been weighed (Measured = Yes), storno clears `bruto`/`neto` and automatically recalculates and updates the saved Work Evaluation for that employee and date, keeping reports accurate. If Measured = No, only the status is changed.
-- **Work Evaluation** — daily employee performance tracking with star ratings (1–3), neto weight (auto-summed from barcode measurements), box count, pay per day, expense per kg, fuel, bonus, and totals
-- **Repurchase** — crop purchase records with dual-currency support (RSD + EUR), buyer and culture links. Live EUR/RSD rate fetched from the National Bank of Serbia (NBS) — choose between Srednji kurs or Prodajni kurs; Income (RSD/EUR) and Price (EUR) are auto-calculated when entering Price/kg (RSD)
+- **Work Evaluation** — daily employee performance tracking with star ratings (1–3), neto weight (auto-summed from barcode measurements), box count, pay per day, expense per kg, fuel, bonus, and totals. Total is always recalculated from the current barcode neto on load — so weighing new barcodes after a save is reflected immediately without manual re-entry.
+- **Repurchase** — crop purchase records with dual-currency support (RSD + EUR), buyer and culture links. Live EUR/RSD rate fetched from the National Bank of Serbia (NBS) — choose between Srednji kurs or Prodajni kurs; Income (RSD/EUR) and Price (EUR) are auto-calculated when entering Price/kg (RSD). Totals footer row in the table (Neto, Net Purch., Difference, Boxes, Income RSD/EUR). Add/Edit dialog is scrollable on small screens.
 - **Scheduler** — interactive monthly calendar with color-coded events, click-to-add, click-to-delete
 
 ### Authentication
@@ -85,7 +85,7 @@ A modern farm management SaaS application — rebuilt from the original Pomona (
 - **Dashboard** — live stat cards (employee/buyer/culture counts), Farm Map with weather popup on marker, and 5-day weather forecast — all on one page (Business tier)
 - **Farm Map** — Leaflet + OpenStreetMap embedded on the dashboard. Marker popup shows today's weather (icon, temp range, condition, humidity, wind). Coordinates set in Settings.
 - **Weather Forecast** — 5-day forecast from OpenWeatherMap shown on the dashboard. Shows temperature (min/max), condition, humidity, and wind speed per day.
-- **PDF export** — Export to PDF button on both Work Summary and Profit & Loss report pages. Portrait for Work Summary, landscape for Profit & Loss. Includes totals footer row.
+- **PDF export** — Export to PDF on Work Summary, Profit & Loss, and Purchase Summary report pages. Portrait for Work Summary, landscape for the others. Includes totals footer rows. Star ratings exported as `*` characters (font-safe).
 - **Serial scale integration** — Web Serial API in the Barcode Reader tab. Connect to any scale on a COM port (9600 baud, 8N1). Click the scale icon on a row to send the `P` command and auto-fill Bruto weight. Requires Chrome or Edge on desktop.
 - **Subscription system** — Three-tier pricing (Free / Pro / Business) with:
   - Stripe Checkout for payments
@@ -102,7 +102,8 @@ A modern farm management SaaS application — rebuilt from the original Pomona (
 ### Reports (Business tier)
 
 - **Work Summary** — aggregated work evaluation data by employee and date range, with a Recharts bar chart (Neto vs Pay per employee); PDF export
-- **Profit & Loss** — daily revenue vs expenses vs profit, with a ComposedChart and summary KPI cards; PDF export (landscape)
+- **Profit & Loss** — daily revenue vs expenses vs profit, with a ComposedChart and summary KPI cards (Total Revenue, Total Expenses, Net Profit, **Avg Selling Price** for the period); PDF export (landscape)
+- **Purchase Summary** — full repurchase history by date range with payment tracking (paid/unpaid toggle per row), income by buyer chart, and a totals footer row (Neto, Net Purch., Boxes, Price/kg, Income RSD/EUR); PDF export (landscape)
 
 ---
 
@@ -324,9 +325,9 @@ Click the **⋯ menu → Print label** on any row in the Generator tab, or the *
 
 ### 3. Weigh
 
-Open the **Reader** tab. Scan or type a barcode value and press Enter — the matching row is highlighted. Use the inline Bruto input or connect a serial scale to read weight directly. Neto is calculated automatically (Bruto − Tara from the packaging record).
+Open the **Reader** tab. Scan or type a barcode value and press Enter — the matching row is highlighted. Enter Bruto weight using the **implicit decimal input** (type digits without a dot — `1234` becomes `1.234 kg`) or connect a serial scale to read weight directly. Neto is calculated automatically (Bruto − Tara from the packaging record).
 
-Use the filters (Employee, Date, Culture, Measured) to narrow down the list. Check individual rows or use the header checkbox to select all visible rows.
+Use the filters (Employee, Date, Culture, Measured) to narrow down the list. Selecting a **Date** fetches barcodes for that exact date from the database — not limited to the default 4-day window. Check individual rows or use the header checkbox to select all visible rows.
 
 ### 4. Storno
 
@@ -384,8 +385,9 @@ Both report pages have an **Export PDF** button next to the date filters.
 |---|---|---|
 | Work Summary | Portrait | `Work_Summary_Report.pdf` |
 | Profit & Loss | Landscape | `Profit_Loss_Report.pdf` |
+| Purchase Summary | Landscape | `Purchase_Summary_<from>_<to>.pdf` |
 
-Both include a totals footer row. The button is disabled when there is no data in the selected date range.
+All include a totals footer row. The button is disabled when there is no data in the selected date range.
 
 ---
 
