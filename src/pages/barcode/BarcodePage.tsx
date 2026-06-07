@@ -24,7 +24,7 @@ import { useEmployees } from '@/hooks/useEmployees'
 import { useCultures } from '@/hooks/useCultures'
 import { useCultureTypes } from '@/hooks/useCultureTypes'
 import { usePackaging } from '@/hooks/usePackaging'
-import { usePlots } from '@/hooks/usePlots'
+import { usePlots, usePlotLists } from '@/hooks/usePlots'
 import { formatDate } from '@/lib/formatters'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/useToast'
@@ -58,6 +58,8 @@ export default function BarcodePage() {
   const { cultureTypes } = useCultureTypes()
   const { packaging } = usePackaging()
   const { plots } = usePlots()
+  const { plotLists } = usePlotLists()
+  const [selectedPlotId, setSelectedPlotId] = useState('')
   const { profile } = useProfile()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogStep, setDialogStep] = useState<'form' | 'confirm-print'>('form')
@@ -140,13 +142,15 @@ const { handleSubmit, register, setValue, watch, reset, formState: { errors } } 
     setDialogOpen(false)
     setDialogStep('form')
     setCreatedBarcodes(null)
+    setSelectedPlotId('')
     reset({})
   }
 
   const today = new Date().toISOString().split('T')[0]
-  const openAdd = () => { reset({ date: today, quantity: 1 }); setDialogStep('form'); setDialogOpen(true) }
+  const openAdd = () => { setSelectedPlotId(''); reset({ date: today, quantity: 1 }); setDialogStep('form'); setDialogOpen(true) }
   const selectedCultureId = watch('culture_id')
   const filteredTypes = cultureTypes.filter((ct) => ct.culture_id === selectedCultureId)
+  const filteredPlotParts = plots.filter((p) => p.plot_list_id === selectedPlotId)
 
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'cancelled'>('all')
 
@@ -354,10 +358,21 @@ const { handleSubmit, register, setValue, watch, reset, formState: { errors } } 
                     {errors.packaging_id && <p className="text-xs text-destructive">{errors.packaging_id.message}</p>}
                   </div>
                   <div className="space-y-1.5">
+                    <Label>Plot *</Label>
+                    <Select value={selectedPlotId} onValueChange={(v) => { setSelectedPlotId(v); setValue('plot_id', '', { shouldValidate: false }) }}>
+                      <SelectTrigger><SelectValue placeholder="Select plot…" /></SelectTrigger>
+                      <SelectContent>{plotLists.map((pl) => <SelectItem key={pl.id} value={pl.id}>{pl.plot_name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
                     <Label>Plot Part *</Label>
-                    <Select value={watch('plot_id') ?? ''} onValueChange={(v) => setValue('plot_id', v, { shouldValidate: true })}>
-                      <SelectTrigger className={errors.plot_id ? 'border-destructive' : ''}><SelectValue placeholder="Select…" /></SelectTrigger>
-                      <SelectContent>{plots.map((p) => <SelectItem key={p.id} value={p.id}>{p.plot_name}</SelectItem>)}</SelectContent>
+                    <Select
+                      value={watch('plot_id') ?? ''}
+                      disabled={!selectedPlotId}
+                      onValueChange={(v) => setValue('plot_id', v, { shouldValidate: true })}
+                    >
+                      <SelectTrigger className={errors.plot_id ? 'border-destructive' : ''}><SelectValue placeholder={selectedPlotId ? 'Select part…' : 'Select a plot first'} /></SelectTrigger>
+                      <SelectContent>{filteredPlotParts.map((p) => <SelectItem key={p.id} value={p.id}>{p.plot_name}{p.plot_label ? ` (${p.plot_label})` : ''}</SelectItem>)}</SelectContent>
                     </Select>
                     {errors.plot_id && <p className="text-xs text-destructive">{errors.plot_id.message}</p>}
                   </div>
