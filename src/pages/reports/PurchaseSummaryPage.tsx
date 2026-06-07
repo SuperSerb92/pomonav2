@@ -78,8 +78,10 @@ export default function PurchaseSummaryPage() {
   const totIncRsd  = rows.reduce((s, r) => s + (r.income_rsd  ?? 0), 0)
   const totIncEur  = rows.reduce((s, r) => s + (r.income_eur  ?? 0), 0)
   const totNeto    = rows.reduce((s, r) => s + (r.neto         ?? 0), 0)
+  const totShipped = rows.reduce((s, r) => s + (r.neto_shipped ?? 0), 0)
   const totBoxes   = rows.reduce((s, r) => s + (r.no_of_boxes  ?? 0), 0)
   const paidCount  = rows.filter(r => r.paid).length
+  const avgPriceRsd = totShipped > 0 ? totIncRsd / totShipped : null
 
   // Chart: income by buyer
   const chartData = Object.values(
@@ -211,9 +213,10 @@ export default function PurchaseSummaryPage() {
                 <tr>
                   <td colSpan={3} className="px-3 py-2 text-xs font-semibold text-muted-foreground">{rows.length} record{rows.length !== 1 ? 's' : ''}</td>
                   <td className="px-3 py-2 text-right text-sm font-semibold">{formatWeight(totNeto)}</td>
-                  <td colSpan={2} />
-                  <td className="px-3 py-2 text-right text-sm font-semibold">{totBoxes}</td>
+                  <td className="px-3 py-2 text-right text-sm font-semibold">{formatWeight(totShipped)}</td>
                   <td />
+                  <td className="px-3 py-2 text-right text-sm font-semibold">{totBoxes}</td>
+                  <td className="px-3 py-2 text-right text-sm font-semibold">{avgPriceRsd != null ? avgPriceRsd.toFixed(4) : '—'}</td>
                   <td className="px-3 py-2 text-right text-sm font-semibold">{formatCurrency(totIncRsd)}</td>
                   <td className="px-3 py-2 text-right text-sm font-semibold">{formatCurrency(totIncEur, 'EUR')}</td>
                   <td colSpan={2} />
