@@ -142,7 +142,7 @@ export default function RepurchasePage() {
           .not('neto', 'is', null),
         supabase
           .from('repurchase')
-          .select('neto, no_of_boxes')
+          .select('neto_shipped, no_of_boxes')
           .eq('user_id', user.id)
           .eq('culture_id', watchedCultureId)
           .eq('repurchase_date', watchedDate),
@@ -151,7 +151,7 @@ export default function RepurchasePage() {
       if (bcRes.data && bcRes.data.length > 0) {
         const totalNeto  = bcRes.data.reduce((s, b) => s + ((b.neto as number) ?? 0), 0)
         const totalBoxes = bcRes.data.length
-        const repNeto    = repRes.data?.reduce((s, r) => s + ((r.neto as number) ?? 0), 0) ?? 0
+        const repNeto    = repRes.data?.reduce((s, r) => s + ((r.neto_shipped as number) ?? 0), 0) ?? 0
         const repBoxes   = repRes.data?.reduce((s, r) => s + ((r.no_of_boxes as number) ?? 0), 0) ?? 0
         const availNeto  = Math.max(0, Math.round((totalNeto - repNeto) * 1000) / 1000)
         const availBoxes = Math.max(0, totalBoxes - repBoxes)
