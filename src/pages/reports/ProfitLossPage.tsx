@@ -63,6 +63,8 @@ export default function ProfitLossPage() {
   const totalRevenue = rows.reduce((s, r) => s + (r.total_revenue ?? 0), 0)
   const totalExpenses = rows.reduce((s, r) => s + (r.total_expenses ?? 0), 0)
   const totalProfit = rows.reduce((s, r) => s + (r.profit ?? 0), 0)
+  const totalNetKg = rows.reduce((s, r) => s + (r.net_purchase_kg ?? 0), 0)
+  const avgSellingPrice = totalNetKg > 0 ? totalRevenue / totalNetKg : 0
 
   const columns: ColumnDef<ProfitRow>[] = [
     { accessorKey: 'report_date',    header: 'Date' },
@@ -104,10 +106,11 @@ export default function ProfitLossPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-3 mb-6">
+      <div className="grid gap-4 sm:grid-cols-4 mb-6">
         <StatCard title="Total Revenue" value={formatCurrency(totalRevenue)} icon={TrendingUp} color="green" />
         <StatCard title="Total Expenses" value={formatCurrency(totalExpenses)} icon={TrendingDown} color="lavender" />
         <StatCard title="Net Profit" value={formatCurrency(totalProfit)} icon={DollarSign} color={totalProfit >= 0 ? 'green' : 'default'} />
+        <StatCard title="Avg Selling Price" value={avgSellingPrice > 0 ? `${avgSellingPrice.toFixed(2)} RSD/kg` : '—'} icon={TrendingUp} color="default" />
       </div>
 
       <div className="space-y-6">
