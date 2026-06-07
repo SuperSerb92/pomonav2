@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
-import { FileDown, CheckCircle2, Circle } from 'lucide-react'
+import { FileDown, CheckCircle2, Circle, CalendarDays } from 'lucide-react'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
 import { formatCurrency, formatWeight } from '@/lib/formatters'
@@ -30,6 +31,8 @@ export default function PurchaseSummaryPage() {
   const thirtyDaysAgo = localDateStr(new Date(Date.now() - 30 * 86400000))
   const [from, setFrom] = useState(thirtyDaysAgo)
   const [to, setTo]     = useState(today)
+  const [paidTarget, setPaidTarget] = useState<string | null>(null)
+  const [paidDate, setPaidDate]     = useState(today)
 
   const key = ['purchase_summary', user?.id, from, to]
 
@@ -51,22 +54,22 @@ export default function PurchaseSummaryPage() {
 
   // Toggle paid status inline
   const togglePaid = useMutation({
-    mutationFn: async ({ id, paid }: { id: string; paid: boolean }) => {
+    mutationFn: async ({ id, paid, paid_date }: { id: string; paid: boolean; paid_date?: string | null }) => {
       const { error } = await supabase
         .from('repurchase')
         .update({
           paid,
-          paid_date: paid ? localDateStr() : null,
+          paid_date: paid ? (paid_date ?? localDateStr()) : null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)
       if (error) throw error
     },
-    onMutate: async ({ id, paid }) => {
+    onMutate: async ({ id, paid, paid_date }) => {
       await queryClient.cancelQueries({ queryKey: key })
       const prev = queryClient.getQueryData<Repurchase[]>(key)
       queryClient.setQueryData<Repurchase[]>(key, old =>
-        old?.map(r => r.id === id ? { ...r, paid, paid_date: paid ? localDateStr() : null } : r) ?? []
+        old?.map(r => r.id === id ? { ...r, paid, paid_date: paid ? (paid_date ?? localDateStr()) : null } : r) ?? []
       )
       return { prev }
     },
@@ -163,7 +166,7 @@ export default function PurchaseSummaryPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/40 border-b">
               <tr>
-                {['Date','Culture','Buyer','Neto (kg)','Net Purch.','Diff.','Boxes','Price/kg','Income RSD','Income EUR','Paid','Notes'].map(h => (
+                {['Date','Culture','Buyer','Neto (kg)','Net Purch.','Diff.','Boxes','Price/kg','Income RSD','Income EUR','Paid'].map(h => (
                   <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -172,12 +175,12 @@ export default function PurchaseSummaryPage() {
               {isLoading
                 ? Array.from({ length: 4 }).map((_, i) => (
                     <tr key={i} className="border-b">
-                      {Array.from({ length: 12 }).map((_, j) => <td key={j} className="px-3 py-3"><Skeleton className="h-4 w-full" /></td>)}
+                      {Array.from({ length: 11 }).map((_, j) => <td key={j} className="px-3 py-3"><Skeleton className="h-4 w-full" /></td>)}
                     </tr>
                   ))
                 : rows.length === 0
                 ? (
-                    <tr><td colSpan={12} className="px-4 py-12 text-center text-muted-foreground text-sm">No purchases found for this period</td></tr>
+                    <tr><td colSpan={11} className="px-4 py-12 text-center text-muted-foreground text-sm">No purchases found for this period</td></tr>
                   )
                 : rows.map(r => (
                     <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
@@ -193,9 +196,16 @@ export default function PurchaseSummaryPage() {
                       <td className="px-3 py-2 text-right tabular-nums">{r.income_eur != null ? formatCurrency(r.income_eur, 'EUR') : '—'}</td>
                       <td className="px-3 py-2">
                         <button
-                          onClick={() => togglePaid.mutate({ id: r.id, paid: !r.paid })}
+                          onClick={() => {
+                            if (r.paid) {
+                              togglePaid.mutate({ id: r.id, paid: false })
+                            } else {
+                              setPaidDate(today)
+                              setPaidTarget(r.id)
+                            }
+                          }}
                           className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
-                          title={r.paid ? `Paid on ${r.paid_date ?? ''}` : 'Click to mark as paid'}
+                          title={r.paid ? `Paid on ${r.paid_date ?? ''} — click to unmark` : 'Click to mark as paid'}
                         >
                           {r.paid
                             ? <><CheckCircle2 className="h-4 w-4 text-pomona-green" /><Badge className="text-[10px] bg-pomona-green/10 text-pomona-green border-0 px-1.5 py-0">Paid{r.paid_date ? ` · ${r.paid_date}` : ''}</Badge></>
@@ -203,7 +213,6 @@ export default function PurchaseSummaryPage() {
                           }
                         </button>
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground max-w-32 truncate" title={r.notes ?? ''}>{r.notes || '—'}</td>
                     </tr>
                   ))
               }
@@ -219,13 +228,46 @@ export default function PurchaseSummaryPage() {
                   <td className="px-3 py-2 text-right text-sm font-semibold">{totPriceRsd > 0 ? totPriceRsd.toFixed(4) : '—'}</td>
                   <td className="px-3 py-2 text-right text-sm font-semibold">{formatCurrency(totIncRsd)}</td>
                   <td className="px-3 py-2 text-right text-sm font-semibold">{formatCurrency(totIncEur, 'EUR')}</td>
-                  <td colSpan={2} />
+                  <td />
                 </tr>
               </tfoot>
             )}
           </table>
         </div>
       </div>
+      {/* Paid date picker dialog */}
+      <Dialog open={!!paidTarget} onOpenChange={(open) => { if (!open) setPaidTarget(null) }}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader><DialogTitle>Mark as paid</DialogTitle></DialogHeader>
+          <div className="space-y-1.5 py-2">
+            <Label>Payment date</Label>
+            <div className="relative">
+              <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                type="date"
+                value={paidDate}
+                onChange={e => setPaidDate(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPaidTarget(null)}>Cancel</Button>
+            <Button
+              className="bg-pomona-green hover:bg-pomona-green/90"
+              disabled={!paidDate || togglePaid.isPending}
+              onClick={() => {
+                if (paidTarget) {
+                  togglePaid.mutate({ id: paidTarget, paid: true, paid_date: paidDate })
+                  setPaidTarget(null)
+                }
+              }}
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   )
 }
