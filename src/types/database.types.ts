@@ -163,9 +163,9 @@ export type Database = {
         Relationships: []
       }
       plot_lists: {
-        Row: { id: string; user_id: string; plot_list_name: string; created_at: string }
-        Insert: { id?: string; user_id: string; plot_list_name: string }
-        Update: { plot_list_name?: string }
+        Row: { id: string; user_id: string; plot_name: string; created_at: string }
+        Insert: { id?: string; user_id: string; plot_name: string }
+        Update: { plot_name?: string }
         Relationships: []
       }
       plots: {

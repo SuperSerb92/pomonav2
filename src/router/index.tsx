@@ -16,7 +16,6 @@ import CulturesPage from '@/pages/cultures/CulturesPage'
 import CultureTypesPage from '@/pages/cultures/CultureTypesPage'
 import PackagingPage from '@/pages/packaging/PackagingPage'
 import PlotsPage from '@/pages/plots/PlotsPage'
-import PlotListsPage from '@/pages/plots/PlotListsPage'
 import BarcodePage from '@/pages/barcode/BarcodePage'
 import WorkEvaluationPage from '@/pages/work-evaluation/WorkEvaluationPage'
 import RepurchasePage from '@/pages/repurchase/RepurchasePage'
@@ -55,7 +54,6 @@ export const router = createBrowserRouter([
           { path: 'cultures/types', element: <CultureTypesPage /> },
           { path: 'packaging', element: <PackagingPage /> },
           { path: 'plots', element: <PlotsPage /> },
-          { path: 'plots/lists', element: <PlotListsPage /> },
 
           // Operations — Pro+
           { path: 'barcode', element: <PlanRoute min="pro"><BarcodePage /></PlanRoute> },

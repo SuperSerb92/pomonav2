@@ -354,7 +354,7 @@ const { handleSubmit, register, setValue, watch, reset, formState: { errors } } 
                     {errors.packaging_id && <p className="text-xs text-destructive">{errors.packaging_id.message}</p>}
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Plot *</Label>
+                    <Label>Plot Part *</Label>
                     <Select value={watch('plot_id') ?? ''} onValueChange={(v) => setValue('plot_id', v, { shouldValidate: true })}>
                       <SelectTrigger className={errors.plot_id ? 'border-destructive' : ''}><SelectValue placeholder="Select…" /></SelectTrigger>
                       <SelectContent>{plots.map((p) => <SelectItem key={p.id} value={p.id}>{p.plot_name}</SelectItem>)}</SelectContent>

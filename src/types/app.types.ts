@@ -72,7 +72,7 @@ export interface Packaging {
 export interface PlotList {
   id: string
   user_id: string
-  plot_list_name: string
+  plot_name: string
   created_at: string
 }
 

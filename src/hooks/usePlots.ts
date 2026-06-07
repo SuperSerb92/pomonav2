@@ -4,6 +4,8 @@ import { useAuth } from '@/context/AuthContext'
 import type { Plot, PlotList } from '@/types/app.types'
 import { toast } from '@/hooks/useToast'
 
+// ── Plot Lists (Plots / Parcels) ──────────────────────────────────────────────
+
 export function usePlotLists() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
@@ -12,7 +14,7 @@ export function usePlotLists() {
   const { data: plotLists = [], isLoading } = useQuery({
     queryKey: key,
     queryFn: async () => {
-      const { data, error } = await supabase.from('plot_lists').select('*').eq('user_id', user!.id).order('plot_list_name')
+      const { data, error } = await supabase.from('plot_lists').select('*').eq('user_id', user!.id).order('plot_name')
       if (error) throw error
       return data as PlotList[]
     },
@@ -20,20 +22,20 @@ export function usePlotLists() {
   })
 
   const create = useMutation({
-    mutationFn: async (plot_list_name: string) => {
-      const { error } = await supabase.from('plot_lists').insert({ plot_list_name, user_id: user!.id })
+    mutationFn: async (plot_name: string) => {
+      const { error } = await supabase.from('plot_lists').insert({ plot_name, user_id: user!.id })
       if (error) throw error
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: key }); toast({ title: 'Plot list added' }) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: key }); toast({ title: 'Plot added' }) },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   })
 
   const update = useMutation({
-    mutationFn: async ({ id, plot_list_name }: { id: string; plot_list_name: string }) => {
-      const { error } = await supabase.from('plot_lists').update({ plot_list_name }).eq('id', id)
+    mutationFn: async ({ id, plot_name }: { id: string; plot_name: string }) => {
+      const { error } = await supabase.from('plot_lists').update({ plot_name }).eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: key }); toast({ title: 'Plot list updated' }) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: key }); toast({ title: 'Plot updated' }) },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   })
 
@@ -54,6 +56,8 @@ export function usePlotLists() {
   return { plotLists, isLoading, create, update, remove }
 }
 
+// ── Plots (Plot Parts / Rows within a parcel) ─────────────────────────────────
+
 type PlotInput = { plot_name: string; plot_label?: string | null; plot_list_id?: string | null }
 
 export function usePlots() {
@@ -66,7 +70,7 @@ export function usePlots() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('plots')
-        .select('*, plot_list:plot_lists(id, plot_list_name)')
+        .select('*, plot_list:plot_lists(id, plot_name)')
         .eq('user_id', user!.id)
         .eq('is_active', true)
         .order('plot_name')
@@ -81,7 +85,7 @@ export function usePlots() {
       const { error } = await supabase.from('plots').insert({ ...input, user_id: user!.id })
       if (error) throw error
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: key }); toast({ title: 'Plot added' }) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: key }); toast({ title: 'Plot part added' }) },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   })
 
@@ -90,7 +94,7 @@ export function usePlots() {
       const { error } = await supabase.from('plots').update(input).eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: key }); toast({ title: 'Plot updated' }) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: key }); toast({ title: 'Plot part updated' }) },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   })
 
