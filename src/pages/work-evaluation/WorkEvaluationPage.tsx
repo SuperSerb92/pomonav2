@@ -129,7 +129,7 @@ export default function WorkEvaluationPage() {
         bonus,
         evaluation:   ev?.evaluation?.toString() ?? '',
         notes:        ev?.notes ?? '',
-        total:        ev?.total ?? calcTotal(neto, payPerDay, expenseKg, fuel, bonus),
+        total:        calcTotal(neto, payPerDay, expenseKg, fuel, bonus),
         saving:       false,
       })
       delete evalByEmp[empId]
@@ -156,7 +156,7 @@ export default function WorkEvaluationPage() {
         bonus,
         evaluation:   ev.evaluation?.toString() ?? '',
         notes:        ev.notes ?? '',
-        total:        ev.total ?? calcTotal(neto, payPerDay, expenseKg, fuel, bonus),
+        total:        calcTotal(neto, payPerDay, expenseKg, fuel, bonus),
         saving:       false,
       })
     }
