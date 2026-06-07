@@ -360,7 +360,6 @@ export default function RepurchasePage() {
                 <Label>EUR rate</Label>
                 <Input {...register('eur_rate')} type="number" step="0.0001" placeholder="Auto-filled from NBS" />
               </div>
-              <div className="space-y-1.5">
               <div className="flex items-center gap-2 col-span-2">
                 <Label>Price/kg</Label>
                 <div className="flex border rounded-md overflow-hidden text-xs ml-auto">
