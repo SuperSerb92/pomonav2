@@ -22,6 +22,7 @@ interface DataTableProps<TData> {
   searchColumn?: string
   searchPlaceholder?: string
   toolbar?: ReactNode
+  footer?: ReactNode
 }
 
 export function DataTable<TData>({
@@ -31,6 +32,7 @@ export function DataTable<TData>({
   searchColumn,
   searchPlaceholder = 'Search…',
   toolbar,
+  footer,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('')
@@ -130,6 +132,11 @@ export function DataTable<TData>({
               ))
             )}
           </tbody>
+          {footer && (
+            <tfoot className="border-t bg-muted/40">
+              <tr>{footer}</tr>
+            </tfoot>
+          )}
         </table>
       </div>
 

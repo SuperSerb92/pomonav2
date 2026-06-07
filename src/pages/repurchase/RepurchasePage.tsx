@@ -178,7 +178,6 @@ export default function RepurchasePage() {
   const totBoxes   = filtered.reduce((s, r) => s + (r.no_of_boxes    ?? 0), 0)
   const totIncRsd  = filtered.reduce((s, r) => s + (r.income_rsd     ?? 0), 0)
   const totIncEur  = filtered.reduce((s, r) => s + (r.income_eur     ?? 0), 0)
-  const avgPriceRsd = totShipped > 0 ? totIncRsd / totShipped : null
 
   const columns: ColumnDef<Repurchase>[] = [
     { id: 'culture', header: 'Culture', cell: ({ row }) => row.original.culture?.culture_name ?? '—' },
@@ -234,21 +233,22 @@ export default function RepurchasePage() {
       {!isLoading && filtered.length === 0 ? (
         <EmptyState icon={RefreshCw} title="No purchases for this date" description="Add a purchase or navigate to a different date." onAdd={openAdd} addLabel="Add purchase" />
       ) : (
-        <>
-          <DataTable columns={columns} data={filtered} isLoading={isLoading} searchColumn="culture" />
-          {!isLoading && filtered.length > 0 && (
-            <div className="rounded-lg border bg-muted/40 px-4 py-2.5 flex flex-wrap gap-x-6 gap-y-1 text-sm mt-2">
-              <span className="text-muted-foreground font-medium">{filtered.length} record{filtered.length !== 1 ? 's' : ''}</span>
-              <span><span className="text-muted-foreground">Neto:</span> <strong>{totNeto.toFixed(3)} kg</strong></span>
-              <span><span className="text-muted-foreground">Net Purch.:</span> <strong>{totShipped.toFixed(3)} kg</strong></span>
-              <span><span className="text-muted-foreground">Difference:</span> <strong>{totDiff.toFixed(3)} kg</strong></span>
-              <span><span className="text-muted-foreground">Boxes:</span> <strong>{totBoxes}</strong></span>
-              <span><span className="text-muted-foreground">Price/kg:</span> <strong>{avgPriceRsd != null ? `${avgPriceRsd.toFixed(4)} RSD` : '—'}</strong></span>
-              <span><span className="text-muted-foreground">Income RSD:</span> <strong>{formatCurrency(totIncRsd)}</strong></span>
-              <span><span className="text-muted-foreground">Income EUR:</span> <strong>{formatCurrency(totIncEur, 'EUR')}</strong></span>
-            </div>
-          )}
-        </>
+        <DataTable
+          columns={columns}
+          data={filtered}
+          isLoading={isLoading}
+          searchColumn="culture"
+          footer={filtered.length > 0 ? <>
+            <td colSpan={2} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">{filtered.length} record{filtered.length !== 1 ? 's' : ''}</td>
+            <td className="px-4 py-2.5 text-right text-sm font-semibold">{totNeto.toFixed(3)}</td>
+            <td className="px-4 py-2.5 text-right text-sm font-semibold">{totShipped.toFixed(3)}</td>
+            <td className="px-4 py-2.5 text-right text-sm font-semibold">{totDiff.toFixed(3)}</td>
+            <td className="px-4 py-2.5 text-right text-sm font-semibold">{totBoxes}</td>
+            <td className="px-4 py-2.5 text-right text-sm font-semibold">{formatCurrency(totIncRsd)}</td>
+            <td className="px-4 py-2.5 text-right text-sm font-semibold">{formatCurrency(totIncEur, 'EUR')}</td>
+            <td />
+          </> : undefined}
+        />
       )}
 
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) setAutofillMsg(null); setDialogOpen(open) }}>
