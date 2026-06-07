@@ -361,38 +361,34 @@ export default function RepurchasePage() {
                 <Input {...register('eur_rate')} type="number" step="0.0001" placeholder="Auto-filled from NBS" />
               </div>
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label>Price/kg</Label>
-                  <div className="flex border rounded-md overflow-hidden text-xs">
-                    {(['rsd', 'eur'] as const).map(c => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => {
-                          setPriceCurrency(c)
-                          setValue('price_rsd', null)
-                          setValue('price_eur', null)
-                          setValue('income_rsd', null)
-                          setValue('income_eur', null)
-                        }}
-                        className={cn('px-2.5 py-1 font-medium transition-colors uppercase', priceCurrency === c ? 'bg-pomona-green text-white' : 'bg-background hover:bg-muted')}
-                      >{c}</button>
-                    ))}
-                  </div>
+              <div className="flex items-center gap-2 col-span-2">
+                <Label>Price/kg</Label>
+                <div className="flex border rounded-md overflow-hidden text-xs ml-auto">
+                  {(['rsd', 'eur'] as const).map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => {
+                        setPriceCurrency(c)
+                        setValue('price_rsd', null)
+                        setValue('price_eur', null)
+                        setValue('income_rsd', null)
+                        setValue('income_eur', null)
+                      }}
+                      className={cn('px-2.5 py-1 font-medium transition-colors uppercase', priceCurrency === c ? 'bg-pomona-green text-white' : 'bg-background hover:bg-muted')}
+                    >{c}</button>
+                  ))}
                 </div>
-                {priceCurrency === 'rsd'
-                  ? <Input {...register('price_rsd')} type="number" step="0.0001" placeholder="Price in RSD" />
-                  : <Input {...register('price_eur')} type="number" step="0.0001" placeholder="Price in EUR" />
-                }
               </div>
               <div className="space-y-1.5">
-                <Label className="text-muted-foreground">Price/kg ({priceCurrency === 'rsd' ? 'EUR' : 'RSD'})</Label>
-                <Input
-                  value={priceCurrency === 'rsd' ? (watch('price_eur') ?? '') : (watch('price_rsd') ?? '')}
-                  type="number"
-                  readOnly
-                  className="bg-muted/40 cursor-default"
-                />
+                <Label>Price/kg (RSD)</Label>
+                <Input {...register('price_rsd')} type="number" step="0.0001" placeholder="0.0000"
+                  readOnly={priceCurrency === 'eur'} className={priceCurrency === 'eur' ? 'bg-muted/40 cursor-default' : ''} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Price/kg (EUR)</Label>
+                <Input {...register('price_eur')} type="number" step="0.0001" placeholder="0.0000"
+                  readOnly={priceCurrency === 'rsd'} className={priceCurrency === 'rsd' ? 'bg-muted/40 cursor-default' : ''} />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-muted-foreground">Income (RSD)</Label>
