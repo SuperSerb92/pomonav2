@@ -129,9 +129,9 @@ export default function WorkSummaryPage() {
           searchColumn="employee_full_name"
           footer={rows.length > 0 ? <>
             <td colSpan={2} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">{rows.length} record{rows.length !== 1 ? 's' : ''}</td>
-            <td className="px-4 py-2.5 text-right text-sm font-semibold">{formatWeight(totNeto)}</td>
-            <td className="px-4 py-2.5 text-right text-sm font-semibold">{totBoxes}</td>
-            <td className="px-4 py-2.5 text-right text-sm font-semibold">{formatCurrency(totPay)}</td>
+            <td className="px-4 py-2.5 text-sm font-semibold">{formatWeight(totNeto)}</td>
+            <td className="px-4 py-2.5 text-sm font-semibold">{totBoxes}</td>
+            <td className="px-4 py-2.5 text-sm font-semibold">{formatCurrency(totPay)}</td>
             <td />
           </> : undefined}
         />

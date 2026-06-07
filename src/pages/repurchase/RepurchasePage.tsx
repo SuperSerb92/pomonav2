@@ -240,12 +240,12 @@ export default function RepurchasePage() {
           searchColumn="culture"
           footer={filtered.length > 0 ? <>
             <td colSpan={2} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">{filtered.length} record{filtered.length !== 1 ? 's' : ''}</td>
-            <td className="px-4 py-2.5 text-right text-sm font-semibold">{totNeto.toFixed(3)}</td>
-            <td className="px-4 py-2.5 text-right text-sm font-semibold">{totShipped.toFixed(3)}</td>
-            <td className="px-4 py-2.5 text-right text-sm font-semibold">{totDiff.toFixed(3)}</td>
-            <td className="px-4 py-2.5 text-right text-sm font-semibold">{totBoxes}</td>
-            <td className="px-4 py-2.5 text-right text-sm font-semibold">{formatCurrency(totIncRsd)}</td>
-            <td className="px-4 py-2.5 text-right text-sm font-semibold">{formatCurrency(totIncEur, 'EUR')}</td>
+            <td className="px-4 py-2.5 text-sm font-semibold">{totNeto.toFixed(3)}</td>
+            <td className="px-4 py-2.5 text-sm font-semibold">{totShipped.toFixed(3)}</td>
+            <td className="px-4 py-2.5 text-sm font-semibold">{totDiff.toFixed(3)}</td>
+            <td className="px-4 py-2.5 text-sm font-semibold">{totBoxes}</td>
+            <td className="px-4 py-2.5 text-sm font-semibold">{formatCurrency(totIncRsd)}</td>
+            <td className="px-4 py-2.5 text-sm font-semibold">{formatCurrency(totIncEur, 'EUR')}</td>
             <td />
           </> : undefined}
         />

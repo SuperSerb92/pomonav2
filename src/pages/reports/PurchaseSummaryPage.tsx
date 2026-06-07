@@ -81,7 +81,7 @@ export default function PurchaseSummaryPage() {
   const totShipped = rows.reduce((s, r) => s + (r.neto_shipped ?? 0), 0)
   const totBoxes   = rows.reduce((s, r) => s + (r.no_of_boxes  ?? 0), 0)
   const paidCount  = rows.filter(r => r.paid).length
-  const avgPriceRsd = totShipped > 0 ? totIncRsd / totShipped : null
+  const totPriceRsd = rows.reduce((s, r) => s + (r.price_rsd ?? 0), 0)
 
   // Chart: income by buyer
   const chartData = Object.values(
@@ -216,7 +216,7 @@ export default function PurchaseSummaryPage() {
                   <td className="px-3 py-2 text-right text-sm font-semibold">{formatWeight(totShipped)}</td>
                   <td />
                   <td className="px-3 py-2 text-right text-sm font-semibold">{totBoxes}</td>
-                  <td className="px-3 py-2 text-right text-sm font-semibold">{avgPriceRsd != null ? avgPriceRsd.toFixed(4) : '—'}</td>
+                  <td className="px-3 py-2 text-right text-sm font-semibold">{totPriceRsd > 0 ? totPriceRsd.toFixed(4) : '—'}</td>
                   <td className="px-3 py-2 text-right text-sm font-semibold">{formatCurrency(totIncRsd)}</td>
                   <td className="px-3 py-2 text-right text-sm font-semibold">{formatCurrency(totIncEur, 'EUR')}</td>
                   <td colSpan={2} />

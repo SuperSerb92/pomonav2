@@ -140,14 +140,14 @@ export default function ProfitLossPage() {
           isLoading={isLoading}
           footer={rows.length > 0 ? <>
             <td colSpan={2} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">{rows.length} record{rows.length !== 1 ? 's' : ''}</td>
-            <td className="px-4 py-2.5 text-right text-sm font-semibold">{rows.reduce((s, r) => s + (r.total_boxes ?? 0), 0)}</td>
-            <td className="px-4 py-2.5 text-right text-sm font-semibold">{totalNetKg.toFixed(3)}</td>
-            <td className="px-4 py-2.5 text-right text-sm font-semibold">{formatCurrency(totalExpenses)}</td>
-            <td className="px-4 py-2.5 text-right text-sm font-semibold">{formatCurrency(totalRevenue)}</td>
-            <td className="px-4 py-2.5 text-right text-sm font-semibold">{formatCurrency(rows.reduce((s, r) => s + (r.total_revenue_eur ?? 0), 0), 'EUR')}</td>
-            <td className="px-4 py-2.5 text-right text-sm font-semibold">{avgSellingPrice > 0 ? formatCurrency(avgSellingPrice) : '—'}</td>
+            <td className="px-4 py-2.5 text-sm font-semibold">{rows.reduce((s, r) => s + (r.total_boxes ?? 0), 0)}</td>
+            <td className="px-4 py-2.5 text-sm font-semibold">{totalNetKg.toFixed(3)}</td>
+            <td className="px-4 py-2.5 text-sm font-semibold">{formatCurrency(totalExpenses)}</td>
+            <td className="px-4 py-2.5 text-sm font-semibold">{formatCurrency(totalRevenue)}</td>
+            <td className="px-4 py-2.5 text-sm font-semibold">{formatCurrency(rows.reduce((s, r) => s + (r.total_revenue_eur ?? 0), 0), 'EUR')}</td>
+            <td className="px-4 py-2.5 text-sm font-semibold">{avgSellingPrice > 0 ? formatCurrency(avgSellingPrice) : '—'}</td>
             <td />
-            <td className="px-4 py-2.5 text-right text-sm font-semibold">{formatCurrency(totalProfit)}</td>
+            <td className="px-4 py-2.5 text-sm font-semibold">{formatCurrency(totalProfit)}</td>
             <td />
           </> : undefined}
         />
