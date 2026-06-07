@@ -65,10 +65,9 @@ A modern farm management SaaS application — rebuilt from the original Pomona (
 - **Cultures** — crop type management
 - **Culture Types** — sub-types linked to each culture
 - **Packaging** — container types with tara (empty weight) tracking
-- **Plot Lists** — groupings for organizing plots
-- **Plots** — individual parcels linked to plot lists
+- **Plots** — parcel management with an integrated **Plot Parts** sub-table. Each Plot (parcel) can have multiple Plot Parts (rows/sections within the parcel). Managed on a single page: click any plot row to expand it and add/edit/delete its parts inline. Plot Parts are what gets assigned to a barcode at generation time.
 - **Barcode** — three-tab page:
-  - **Generator** — create barcodes with mandatory employee / culture / culture type / packaging / plot assignments, a date picker (defaults to today, supports future dates), and a **quantity field** (1–99) to generate multiple unique barcodes in one go. After generation the dialog asks "Print now?" — yes opens the print modal immediately, no saves and closes. Print later from the table via the ⋯ menu (disabled for cancelled barcodes). Print labels: CODE128, 4.25"×2" thermal layout with lavender header showing farm name and origin, lot code, variety, worker, GGN. Checkbox selection for bulk storno. **Status filter** (All / Active / Cancelled) sits inline next to the search bar.
+  - **Generator** — create barcodes with mandatory employee / culture / culture type / packaging / **plot part** assignments, a date picker (defaults to today, supports future dates), and a **quantity field** (1–99) to generate multiple unique barcodes in one go. After generation the dialog asks "Print now?" — yes opens the print modal immediately, no saves and closes. Print later from the table via the ⋯ menu (disabled for cancelled barcodes). Print labels: CODE128, 4.25"×2" thermal layout with lavender header showing farm name and origin, lot code, variety, worker, GGN. Checkbox selection for bulk storno. **Status filter** (All / Active / Cancelled) sits inline next to the search bar.
   - **Reader** — scan barcodes via a hardware scanner, enter Bruto weight manually (implicit 3-decimal input — type `1234` to get `1.234 kg`, no dot required) or read directly from a serial scale via the Web Serial API (9600/8N1, `P` command), Neto auto-calculated (Bruto − Tara); real-time save per row. Filter by employee, date, culture, or measured status. Date filter fetches from the DB for that specific date regardless of the default 4-day window. Checkbox selection for bulk operations.
   - **Storno** — history of all cancelled barcodes. Storno can be triggered from both the Generator and Reader tabs, individually or in bulk. **Smart storno logic:** if a barcode has been weighed (Measured = Yes), storno clears `bruto`/`neto` and automatically recalculates and updates the saved Work Evaluation for that employee and date, keeping reports accurate. If Measured = No, only the status is changed.
 - **Work Evaluation** — daily employee performance tracking with star ratings (1–3), neto weight (auto-summed from barcode measurements), box count, pay per day, expense per kg, fuel, bonus, and totals. Total is always recalculated from the current barcode neto on load — so weighing new barcodes after a save is reflected immediately without manual re-entry.
@@ -125,7 +124,7 @@ PomonaV2/
 │   │   ├── buyers/          # BuyersPage
 │   │   ├── cultures/        # CulturesPage, CultureTypesPage
 │   │   ├── packaging/       # PackagingPage
-│   │   ├── plots/           # PlotsPage, PlotListsPage
+│   │   ├── plots/           # PlotsPage (plots + plot parts combined)
 │   │   ├── barcode/         # BarcodePage, BarcodeReaderTab, BarcodeStornoTab, BarcodePrintModal
 │   │   ├── work-evaluation/ # WorkEvaluationPage
 │   │   ├── repurchase/      # RepurchasePage
@@ -151,7 +150,8 @@ PomonaV2/
 │   │   ├── 006_repurchase_neto_shipped.sql  # add neto_shipped column to repurchase
 │   │   ├── 007_repurchase_paid.sql          # add paid/paid_at tracking to repurchase
 │   │   ├── 008_profit_loss_view_update.sql  # extend profit_loss_daily with EUR, avg price, expense %
-│   │   └── 009_profiles_ggn.sql             # add ggn and origin columns to profiles
+│   │   ├── 009_profiles_ggn.sql             # add ggn and origin columns to profiles
+│   │   └── 010_rename_plot_list_name.sql    # rename plot_list_name → plot_name in plot_lists
 │   └── functions/
 │       ├── stripe-webhook/
 │       ├── create-checkout-session/
@@ -191,6 +191,7 @@ In your Supabase project, open the **SQL Editor** and run each migration file in
 7. `supabase/migrations/007_repurchase_paid.sql`
 8. `supabase/migrations/008_profit_loss_view_update.sql`
 9. `supabase/migrations/009_profiles_ggn.sql`
+10. `supabase/migrations/010_rename_plot_list_name.sql`
 
 > When prompted to enable RLS, confirm — the migrations set up the correct owner-based policies automatically.
 
