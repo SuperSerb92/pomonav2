@@ -172,6 +172,13 @@ export default function RepurchasePage() {
   // Filter by selected date
   const filtered = repurchases.filter(r => r.repurchase_date === selectedDate)
 
+  const totNeto    = filtered.reduce((s, r) => s + (r.neto          ?? 0), 0)
+  const totShipped = filtered.reduce((s, r) => s + (r.neto_shipped   ?? 0), 0)
+  const totDiff    = filtered.reduce((s, r) => s + (r.difference     ?? 0), 0)
+  const totBoxes   = filtered.reduce((s, r) => s + (r.no_of_boxes    ?? 0), 0)
+  const totIncRsd  = filtered.reduce((s, r) => s + (r.income_rsd     ?? 0), 0)
+  const totIncEur  = filtered.reduce((s, r) => s + (r.income_eur     ?? 0), 0)
+
   const columns: ColumnDef<Repurchase>[] = [
     { id: 'culture', header: 'Culture', cell: ({ row }) => row.original.culture?.culture_name ?? '—' },
     { id: 'buyer',   header: 'Buyer',   cell: ({ row }) => row.original.buyer?.name ?? '—' },
@@ -226,11 +233,24 @@ export default function RepurchasePage() {
       {!isLoading && filtered.length === 0 ? (
         <EmptyState icon={RefreshCw} title="No purchases for this date" description="Add a purchase or navigate to a different date." onAdd={openAdd} addLabel="Add purchase" />
       ) : (
-        <DataTable columns={columns} data={filtered} isLoading={isLoading} searchColumn="culture" />
+        <>
+          <DataTable columns={columns} data={filtered} isLoading={isLoading} searchColumn="culture" />
+          {!isLoading && filtered.length > 0 && (
+            <div className="rounded-lg border bg-muted/40 px-4 py-2.5 flex flex-wrap gap-x-6 gap-y-1 text-sm mt-2">
+              <span className="text-muted-foreground font-medium">{filtered.length} record{filtered.length !== 1 ? 's' : ''}</span>
+              <span><span className="text-muted-foreground">Neto:</span> <strong>{totNeto.toFixed(3)} kg</strong></span>
+              <span><span className="text-muted-foreground">Net Repurchase:</span> <strong>{totShipped.toFixed(3)} kg</strong></span>
+              <span><span className="text-muted-foreground">Difference:</span> <strong>{totDiff.toFixed(3)} kg</strong></span>
+              <span><span className="text-muted-foreground">Boxes:</span> <strong>{totBoxes}</strong></span>
+              <span><span className="text-muted-foreground">Income RSD:</span> <strong>{formatCurrency(totIncRsd)}</strong></span>
+              <span><span className="text-muted-foreground">Income EUR:</span> <strong>{formatCurrency(totIncEur, 'EUR')}</strong></span>
+            </div>
+          )}
+        </>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) setAutofillMsg(null); setDialogOpen(open) }}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? 'Edit purchase' : 'Add purchase'}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 

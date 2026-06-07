@@ -102,7 +102,7 @@ export function exportWorkEvaluationPdf(rows: WorkEvalRow[], date: string, farmN
       r.fuel       || '—',
       r.bonus      || '—',
       r.total > 0 ? r.total.toFixed(0) : '—',
-      '★'.repeat(parseInt(r.evaluation) || 0) || '—',
+      '*'.repeat(parseInt(r.evaluation) || 0) || '—',
       r.notes || '',
     ]),
     foot: [[

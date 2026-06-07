@@ -41,18 +41,24 @@ export function BarcodeReaderTab() {
   const [filterMeasured, setFilterMeasured] = useState<'all' | 'yes' | 'no'>('all')
 
   const fourDaysAgo = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
-  const key = ['barcodes-reader', user?.id]
+  const key = ['barcodes-reader', user?.id, filterDate]
 
   const { data: barcodes = [], isLoading } = useQuery({
     queryKey: key,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('barcodes')
         .select('*, employee:employees(id, name, surname, middle_name), culture:cultures(id, culture_name), culture_type:culture_types(id, culture_type_name), packaging:packaging(id, packaging_type, tara)')
         .eq('user_id', user!.id)
         .eq('is_storno', false)
-        .gte('created_at', fourDaysAgo)
-        .order('created_at', { ascending: false })
+
+      if (filterDate) {
+        q = q.gte('created_at', `${filterDate}T00:00:00`).lte('created_at', `${filterDate}T23:59:59`)
+      } else {
+        q = q.gte('created_at', fourDaysAgo)
+      }
+
+      const { data, error } = await q.order('created_at', { ascending: false })
       if (error) throw error
       return data as unknown as Barcode[]
     },
@@ -110,10 +116,18 @@ export function BarcodeReaderTab() {
     await readAndSave(barcode)
   }
 
+  function digitsToDecimal(digits: string): string {
+    const d = digits.replace(/\D/g, '')
+    if (!d) return ''
+    const padded = d.padStart(4, '0')
+    const intPart = padded.slice(0, -3).replace(/^0+/, '') || '0'
+    return `${intPart}.${padded.slice(-3)}`
+  }
+
   function saveBruto(barcode: Barcode) {
     const raw = pendingBruto[barcode.id]
     if (raw === undefined) return
-    const bruto = parseFloat(raw)
+    const bruto = parseFloat(digitsToDecimal(raw))
     if (isNaN(bruto) || bruto < 0) {
       toast({ title: 'Invalid weight', variant: 'destructive' })
       return
@@ -129,10 +143,6 @@ export function BarcodeReaderTab() {
       const emp = b.employee
       const name = emp ? `${emp.surname} ${emp.name}`.toLowerCase() : ''
       if (!name.includes(filterEmployee.toLowerCase())) return false
-    }
-    if (filterDate) {
-      const bDate = new Date(b.created_at).toLocaleDateString('en-CA')
-      if (bDate !== filterDate) return false
     }
     if (filterCulture) {
       const cn = b.culture?.culture_name?.toLowerCase() ?? ''
@@ -297,7 +307,7 @@ export function BarcodeReaderTab() {
               {filteredBarcodes.map((b) => {
                 const tara = (b.packaging as any)?.tara ?? b.tara ?? 0
                 const pendingVal = pendingBruto[b.id]
-                const displayBruto = pendingVal !== undefined ? parseFloat(pendingVal) || 0 : b.bruto ?? 0
+                const displayBruto = pendingVal !== undefined ? (parseFloat(digitsToDecimal(pendingVal)) || 0) : b.bruto ?? 0
                 const displayNeto = Math.max(0, displayBruto - tara)
                 const isMeasured = b.bruto != null && b.bruto > 0
                 const isHighlighted = highlightedId === b.id
@@ -335,12 +345,16 @@ export function BarcodeReaderTab() {
                     <td className="px-3 py-2 text-right text-sm">{tara.toFixed(3)}</td>
                     <td className="px-3 py-2">
                       <Input
-                        type="number"
-                        step="0.001"
-                        min="0"
+                        type="text"
+                        inputMode="numeric"
                         className="h-7 w-24 text-right ml-auto"
-                        value={pendingVal ?? (b.bruto?.toString() ?? '')}
-                        onChange={(e) => setPendingBruto((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                        value={pendingVal !== undefined ? digitsToDecimal(pendingVal) : (b.bruto?.toFixed(3) ?? '')}
+                        onFocus={() => {
+                          if (pendingBruto[b.id] === undefined && b.bruto != null) {
+                            setPendingBruto(prev => ({ ...prev, [b.id]: Math.round(b.bruto! * 1000).toString() }))
+                          }
+                        }}
+                        onChange={(e) => setPendingBruto((prev) => ({ ...prev, [b.id]: e.target.value.replace(/\D/g, '') }))}
                         onKeyDown={(e) => e.key === 'Enter' && saveBruto(b)}
                       />
                     </td>

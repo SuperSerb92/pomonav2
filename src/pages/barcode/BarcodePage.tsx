@@ -26,6 +26,7 @@ import { useCultureTypes } from '@/hooks/useCultureTypes'
 import { usePackaging } from '@/hooks/usePackaging'
 import { usePlots } from '@/hooks/usePlots'
 import { formatDate } from '@/lib/formatters'
+import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/useToast'
 import { useStornoBarcode } from '@/hooks/useStornoBarcode'
 import { BarcodeReaderTab } from './BarcodeReaderTab'
@@ -147,6 +148,14 @@ const { handleSubmit, register, setValue, watch, reset, formState: { errors } } 
   const selectedCultureId = watch('culture_id')
   const filteredTypes = cultureTypes.filter((ct) => ct.culture_id === selectedCultureId)
 
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'cancelled'>('all')
+
+  const filteredBarcodes = barcodes.filter((b) => {
+    if (filterStatus === 'active') return !b.is_storno
+    if (filterStatus === 'cancelled') return b.is_storno
+    return true
+  })
+
   const activeBarcodesForSelection = barcodes.filter(b => !b.is_storno)
   const allSelected = activeBarcodesForSelection.length > 0 && activeBarcodesForSelection.every(b => selectedIds.has(b.id))
   const someSelected = activeBarcodesForSelection.some(b => selectedIds.has(b.id))
@@ -196,7 +205,10 @@ const { handleSubmit, register, setValue, watch, reset, formState: { errors } } 
         <DropdownMenu>
           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setPrintTarget([row.original])}>
+            <DropdownMenuItem
+              disabled={row.original.is_storno}
+              onClick={() => setPrintTarget([row.original])}
+            >
               <Printer className="mr-2 h-4 w-4" />Print label
             </DropdownMenuItem>
             {!row.original.is_storno && (
@@ -246,7 +258,35 @@ const { handleSubmit, register, setValue, watch, reset, formState: { errors } } 
           {!isLoading && barcodes.length === 0 ? (
             <EmptyState icon={QrCode} title="No barcodes yet" description="Generate barcodes to track harvested goods." onAdd={openAdd} addLabel="Generate barcode" />
           ) : (
-            <DataTable columns={columns} data={barcodes} isLoading={isLoading} searchColumn="barcode_value" searchPlaceholder="Search by barcode, employee, culture…" />
+            <DataTable
+              columns={columns}
+              data={filteredBarcodes}
+              isLoading={isLoading}
+              searchColumn="barcode_value"
+              searchPlaceholder="Search by barcode, employee, culture…"
+              toolbar={
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground pr-1">Status:</span>
+                  {(['all', 'active', 'cancelled'] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => setFilterStatus(opt)}
+                      className={cn(
+                        'px-2.5 py-1 text-xs rounded border transition-colors',
+                        filterStatus === opt
+                          ? 'bg-pomona-green text-white border-pomona-green'
+                          : 'border-border bg-background hover:bg-muted'
+                      )}
+                    >
+                      {opt === 'all' ? 'All' : opt === 'active' ? 'Active' : 'Cancelled'}
+                    </button>
+                  ))}
+                  {filterStatus !== 'all' && (
+                    <span className="text-xs text-muted-foreground pl-1">{filteredBarcodes.length} of {barcodes.length}</span>
+                  )}
+                </div>
+              }
+            />
           )}
         </TabsContent>
 

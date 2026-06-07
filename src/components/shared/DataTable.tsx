@@ -8,7 +8,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { ChevronDown, ChevronUp, ChevronsUpDown, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -21,6 +21,7 @@ interface DataTableProps<TData> {
   isLoading?: boolean
   searchColumn?: string
   searchPlaceholder?: string
+  toolbar?: ReactNode
 }
 
 export function DataTable<TData>({
@@ -29,6 +30,7 @@ export function DataTable<TData>({
   isLoading,
   searchColumn,
   searchPlaceholder = 'Search…',
+  toolbar,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('')
@@ -48,15 +50,20 @@ export function DataTable<TData>({
 
   return (
     <div className="space-y-3">
-      {searchColumn !== undefined && (
-        <div className="relative max-w-xs">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={searchPlaceholder}
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="pl-9"
-          />
+      {(searchColumn !== undefined || toolbar) && (
+        <div className="flex items-center gap-3 flex-wrap">
+          {searchColumn !== undefined && (
+            <div className="relative max-w-xs flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder={searchPlaceholder}
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          )}
+          {toolbar}
         </div>
       )}
 
