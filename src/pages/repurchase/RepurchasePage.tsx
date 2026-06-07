@@ -77,36 +77,44 @@ export default function RepurchasePage() {
   const watchedCultureId   = watch('culture_id')
   const watchedDate        = watch('repurchase_date')
 
-  // Auto-calculate income from neto_shipped × price, and difference = neto_shipped - neto
+  // Difference — always recalculate when neto_shipped or neto changes
   useEffect(() => {
     const netoShipped = Number(watchedNetoShipped) || 0
     const neto        = Number(watchedNeto)        || 0
-    const rate        = Number(watchedEurRate)     || 0
-    if (netoShipped > 0) {
-      setValue('difference', round2(netoShipped - neto))
-    }
-    if (priceCurrency === 'rsd') {
-      const price = Number(watchedPriceRsd) || 0
-      if (price > 0 && netoShipped > 0) {
-        const incomeRsd = round2(price * netoShipped)
-        setValue('income_rsd', incomeRsd)
-        if (rate > 0) {
-          setValue('price_eur', round4(price / rate))
-          setValue('income_eur', round2(incomeRsd / rate))
-        }
-      }
-    } else {
-      const priceEur = Number(watchedPriceEur) || 0
-      if (priceEur > 0 && rate > 0) {
-        const priceRsd = round4(priceEur * rate)
-        setValue('price_rsd', priceRsd)
-        if (netoShipped > 0) {
-          setValue('income_rsd', round2(priceRsd * netoShipped))
-          setValue('income_eur', round2(priceEur * netoShipped))
-        }
+    if (netoShipped > 0) setValue('difference', round2(netoShipped - neto))
+  }, [watchedNetoShipped, watchedNeto, setValue])
+
+  // RSD price mode — derive EUR price and incomes from price_rsd
+  useEffect(() => {
+    if (priceCurrency !== 'rsd') return
+    const price       = Number(watchedPriceRsd)    || 0
+    const netoShipped = Number(watchedNetoShipped)  || 0
+    const rate        = Number(watchedEurRate)      || 0
+    if (price > 0 && netoShipped > 0) {
+      const incomeRsd = round2(price * netoShipped)
+      setValue('income_rsd', incomeRsd)
+      if (rate > 0) {
+        setValue('price_eur', round4(price / rate))
+        setValue('income_eur', round2(incomeRsd / rate))
       }
     }
-  }, [watchedPriceRsd, watchedPriceEur, watchedNetoShipped, watchedNeto, watchedEurRate, priceCurrency, setValue])
+  }, [watchedPriceRsd, watchedNetoShipped, watchedEurRate, priceCurrency, setValue])
+
+  // EUR price mode — derive RSD price and incomes from price_eur
+  useEffect(() => {
+    if (priceCurrency !== 'eur') return
+    const priceEur    = Number(watchedPriceEur)    || 0
+    const netoShipped = Number(watchedNetoShipped)  || 0
+    const rate        = Number(watchedEurRate)      || 0
+    if (priceEur > 0 && rate > 0) {
+      const priceRsd = round4(priceEur * rate)
+      setValue('price_rsd', priceRsd)
+      if (netoShipped > 0) {
+        setValue('income_rsd', round2(priceRsd * netoShipped))
+        setValue('income_eur', round2(priceEur * netoShipped))
+      }
+    }
+  }, [watchedPriceEur, watchedNetoShipped, watchedEurRate, priceCurrency, setValue])
 
   // When rates are fetched or rate type changes, fill eur_rate field
   useEffect(() => {
@@ -360,7 +368,13 @@ export default function RepurchasePage() {
                       <button
                         key={c}
                         type="button"
-                        onClick={() => setPriceCurrency(c)}
+                        onClick={() => {
+                          setPriceCurrency(c)
+                          setValue('price_rsd', null)
+                          setValue('price_eur', null)
+                          setValue('income_rsd', null)
+                          setValue('income_eur', null)
+                        }}
                         className={cn('px-2.5 py-1 font-medium transition-colors uppercase', priceCurrency === c ? 'bg-pomona-green text-white' : 'bg-background hover:bg-muted')}
                       >{c}</button>
                     ))}
