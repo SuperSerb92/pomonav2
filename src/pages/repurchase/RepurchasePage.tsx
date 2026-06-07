@@ -22,6 +22,7 @@ import { useExchangeRate } from '@/hooks/useExchangeRate'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { formatCurrency, formatWeight } from '@/lib/formatters'
+import { cn } from '@/lib/utils'
 import type { Repurchase } from '@/types/app.types'
 
 function localDateStr(d = new Date()) {
@@ -60,6 +61,7 @@ export default function RepurchasePage() {
   const [editing, setEditing] = useState<Repurchase | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [rateType, setRateType] = useState<'srednji' | 'prodajni'>('srednji')
+  const [priceCurrency, setPriceCurrency] = useState<'rsd' | 'eur'>('rsd')
   const [autofillLoading, setAutofillLoading] = useState(false)
   const [autofillMsg, setAutofillMsg] = useState<string | null>(null)
 
@@ -67,7 +69,8 @@ export default function RepurchasePage() {
     resolver: zodResolver(schema) as never,
   })
 
-  const watchedPriceRsd   = watch('price_rsd')
+  const watchedPriceRsd    = watch('price_rsd')
+  const watchedPriceEur    = watch('price_eur')
   const watchedNetoShipped = watch('neto_shipped')
   const watchedNeto        = watch('neto')
   const watchedEurRate     = watch('eur_rate')
@@ -76,22 +79,34 @@ export default function RepurchasePage() {
 
   // Auto-calculate income from neto_shipped × price, and difference = neto_shipped - neto
   useEffect(() => {
-    const price       = Number(watchedPriceRsd)    || 0
-    const netoShipped = Number(watchedNetoShipped)  || 0
-    const neto        = Number(watchedNeto)         || 0
-    const rate        = Number(watchedEurRate)      || 0
+    const netoShipped = Number(watchedNetoShipped) || 0
+    const neto        = Number(watchedNeto)        || 0
+    const rate        = Number(watchedEurRate)     || 0
     if (netoShipped > 0) {
       setValue('difference', round2(netoShipped - neto))
     }
-    if (price > 0 && netoShipped > 0) {
-      const incomeRsd = round2(price * netoShipped)
-      setValue('income_rsd', incomeRsd)
-      if (rate > 0) {
-        setValue('price_eur', round4(price / rate))
-        setValue('income_eur', round2(incomeRsd / rate))
+    if (priceCurrency === 'rsd') {
+      const price = Number(watchedPriceRsd) || 0
+      if (price > 0 && netoShipped > 0) {
+        const incomeRsd = round2(price * netoShipped)
+        setValue('income_rsd', incomeRsd)
+        if (rate > 0) {
+          setValue('price_eur', round4(price / rate))
+          setValue('income_eur', round2(incomeRsd / rate))
+        }
+      }
+    } else {
+      const priceEur = Number(watchedPriceEur) || 0
+      if (priceEur > 0 && rate > 0) {
+        const priceRsd = round4(priceEur * rate)
+        setValue('price_rsd', priceRsd)
+        if (netoShipped > 0) {
+          setValue('income_rsd', round2(priceRsd * netoShipped))
+          setValue('income_eur', round2(priceEur * netoShipped))
+        }
       }
     }
-  }, [watchedPriceRsd, watchedNetoShipped, watchedNeto, watchedEurRate, setValue])
+  }, [watchedPriceRsd, watchedPriceEur, watchedNetoShipped, watchedNeto, watchedEurRate, priceCurrency, setValue])
 
   // When rates are fetched or rate type changes, fill eur_rate field
   useEffect(() => {
@@ -152,6 +167,7 @@ export default function RepurchasePage() {
   const openAdd = () => {
     setEditing(null)
     setAutofillMsg(null)
+    setPriceCurrency('rsd')
     reset({ repurchase_date: selectedDate })
     setDialogOpen(true)
   }
@@ -159,6 +175,7 @@ export default function RepurchasePage() {
   const openEdit = (r: Repurchase) => {
     setEditing(r)
     setAutofillMsg(null)
+    setPriceCurrency('rsd')
     reset(r as unknown as FormData)
     setDialogOpen(true)
   }
@@ -335,10 +352,33 @@ export default function RepurchasePage() {
                 <Label>EUR rate</Label>
                 <Input {...register('eur_rate')} type="number" step="0.0001" placeholder="Auto-filled from NBS" />
               </div>
-              <div className="space-y-1.5"><Label>Price/kg (RSD)</Label><Input {...register('price_rsd')} type="number" step="0.0001" /></div>
               <div className="space-y-1.5">
-                <Label className="text-muted-foreground">Price/kg (EUR)</Label>
-                <Input {...register('price_eur')} type="number" step="0.0001" readOnly className="bg-muted/40 cursor-default" />
+                <div className="flex items-center justify-between">
+                  <Label>Price/kg</Label>
+                  <div className="flex border rounded-md overflow-hidden text-xs">
+                    {(['rsd', 'eur'] as const).map(c => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setPriceCurrency(c)}
+                        className={cn('px-2.5 py-1 font-medium transition-colors uppercase', priceCurrency === c ? 'bg-pomona-green text-white' : 'bg-background hover:bg-muted')}
+                      >{c}</button>
+                    ))}
+                  </div>
+                </div>
+                {priceCurrency === 'rsd'
+                  ? <Input {...register('price_rsd')} type="number" step="0.0001" placeholder="Price in RSD" />
+                  : <Input {...register('price_eur')} type="number" step="0.0001" placeholder="Price in EUR" />
+                }
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-muted-foreground">Price/kg ({priceCurrency === 'rsd' ? 'EUR' : 'RSD'})</Label>
+                <Input
+                  value={priceCurrency === 'rsd' ? (watch('price_eur') ?? '') : (watch('price_rsd') ?? '')}
+                  type="number"
+                  readOnly
+                  className="bg-muted/40 cursor-default"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-muted-foreground">Income (RSD)</Label>
